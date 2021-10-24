@@ -1,3 +1,3 @@
-# cd-con.github.io
+# cd-con landing page
 
-Please wait...
+Learn more about MagicOnline: [click](http://cd-con.github.io/magiconline)
