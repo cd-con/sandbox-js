@@ -62,7 +62,7 @@ class Trail {
 		ctx.fillStyle = this.colour;
 		this.trailParticles.forEach((e, i) => {
 			const size = this.initSize - (this.initSize / length * i);
-			ctx.drawRect(e.x - size / 2, e.y - size / 2, size, size);
+			ctx.fillRect(e.x - size / 2, e.y - size / 2, size, size);
 		})
 
 	}
@@ -81,7 +81,7 @@ document.getElementById('play-again').addEventListener('click', () => {
 let deployEnabled = false;
 document.getElementById('auto-deploy').addEventListener('click', () => {
 	deployEnabled = !deployEnabled;
-	document.getElementById('auto-deploy').innerHTML = `Deploy balls automatically ${deployEnabled ? "✅": "❎"}`;
+	document.getElementById('auto-deploy').innerHTML = `Deploy balls automatically ${deployEnabled ? "✔": "❌"}`;
 }, false);
 
 function onPhysicsRefreshRateChange(interval) {
