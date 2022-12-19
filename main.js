@@ -95,7 +95,7 @@ function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	for (const cumball of cumballInstances) {
 		ctx.drawImage(cumballEntity, cumball.x - cumball.width / 2, cumball.y - cumball.height / 2, cumball.width, cumball.height);
-		cumball.trail.draw();
+		cumball.trail.draw(ctx);
 	}
 }
 function updateCumballs() {
