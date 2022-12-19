@@ -46,10 +46,10 @@ class Ball {
 class Trail {
 	trailParticles = [];
 
-	constructor(length = 32, initSize = 16, rgbaArray = [255, 0, 0, 255]) {
+	constructor(length = 32, initSize = 16, rgbaArray = [255, 0, 0, 1]) {
 		this.length = length;
 		this.initSize = initSize;
-		this.colour = `rgba(${rgba.join(", ")})`;
+		this.colour = `rgba(${rgbaArray.join(", ")})`;
 	}
 
 	update(x, y) {
@@ -59,7 +59,7 @@ class Trail {
 	}
 
 	draw(ctx) {
-		ctx.fillStyle = "#000000";
+		ctx.fillStyle = this.colour;
 		this.trailParticles.forEach((e, i) => {
 			const size = this.initSize - (this.initSize / length * i);
 			ctx.drawRect(e.x - size / 2, e.y - size / 2, size, size);
