@@ -19,6 +19,7 @@ class Ball {
 		const angle = Math.random() * Math.PI * 2;
 		const acceleration = Math.random()*16+16;
 		[this.dx, this.dy] = [Math.cos(angle)*acceleration, Math.sin(angle)*acceleration];
+		this.trail = new Trail();
 	}
 	update() {
 		// Bounce off the edges
@@ -35,6 +36,34 @@ class Ball {
 		this.y = Math.min(Math.max(this.y + this.dy, this.height / 2), canvas.height - this.height / 2); //Вообще не удастся
 	};
 };
+
+
+class Trail{
+    trailParticles = [];
+
+    constructor(length = 32, initSize = 16, colour = [255,0,0,255]){
+        this.length = length;
+        this.initSize = initSize;
+        this.colour = colour;
+    }
+
+    update(emmiterX, emmiterY){
+        if (this.trailParticles.length < this.length){
+            this.trailParticles.push({x:emmiterX,y:emmiterY})
+        }
+		this.trailParticles.splice(this.trailParticles.length, Infinity);
+    }
+
+	draw(ctx){
+		ctx.fillColor = "#000000";
+		this.trailParticles.forEach( (e, i )=>
+		{
+			size = this.initSize - (this.initSize / length % i);
+			ctx.drawRect(e.x - size / 2, e.y - size / 2, size, size);
+		})
+		
+	}
+}
 
 let cumballInstances = [];
 
@@ -66,11 +95,13 @@ function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	for (const cumball of cumballInstances) {
 		ctx.drawImage(cumballEntity, cumball.x - cumball.width / 2, cumball.y - cumball.height / 2, cumball.width, cumball.height);
+		cumball.trail.draw();
 	}
 }
 function updateCumballs() {
 	for (const cumball of cumballInstances) {
 		cumball.update();
+		cumball.trail.update();
 	}
 	document.getElementById("ball-counter").innerHTML = "Balls count: " + cumballInstances.length;
 }
