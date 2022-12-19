@@ -12,6 +12,8 @@ const gravity = 9.81;
 let intervalBetweenFrames = 16; // In milliseconds
 let intervalBetweenBallDeploy = 25;
 
+let deployEnabled = false; // deploy controller
+let trailEnabled = true;
 // BALL
 class Ball {
 	constructor(x, y, width = 16, height = 16) {
@@ -37,8 +39,10 @@ class Ball {
 
 		this.x = Math.min(Math.max(this.x + this.dx, this.width / 2), canvas.width - this.width / 2); //Побег не удастся
 		this.y = Math.min(Math.max(this.y + this.dy, this.height / 2), canvas.height - this.height / 2); //Вообще не удастся
-
-		this.trail.update(this.x, this.y);
+		
+		if (trailEnabled){
+			this.trail.update(this.x, this.y);
+		}
 	};
 };
 
@@ -46,7 +50,7 @@ class Ball {
 class Trail {
 	trailParticles = [];
 
-	constructor(length = 32, initSize = 16, rgbaArray = [255, 0, 0, 1]) {
+	constructor(length = 64, initSize = 16, rgbaArray = [255, 0, 0, 255]) {
 		this.length = length;
 		this.initSize = initSize;
 		this.colour = `rgba(${rgbaArray.join(", ")})`;
@@ -72,16 +76,23 @@ let cumballInstances = [];
 
 // Event listeners
 
-canvas.addEventListener('mousedown', addXtraCumBall, false);
+canvas.addEventListener('mousedown', (mouseEvent) => 
+{
+	addXtraCumBall(getRelativeCursorPosition(canvas, mouseEvent));
+}, false);
 
 document.getElementById('play-again').addEventListener('click', () => {
 	cumballInstances = [];
 }, false);
 
-let deployEnabled = false;
 document.getElementById('auto-deploy').addEventListener('click', () => {
 	deployEnabled = !deployEnabled;
 	document.getElementById('auto-deploy').innerHTML = `Deploy balls automatically ${deployEnabled ? "✔": "❌"}`;
+}, false);
+
+document.getElementById('draw-trail').addEventListener('click', () => {
+	trailEnabled = !trailEnabled;
+	document.getElementById('draw-trail').innerHTML = `Draw trails ${trailEnabled ? "✔": "❌"}`;
 }, false);
 
 function onPhysicsRefreshRateChange(interval) {
@@ -95,9 +106,8 @@ function onAutodeployRateChange(interval) {
 	autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
 }
 
-function addXtraCumBall(mouseEvent) {
-	const { x, y } = getRelativeCursorPosition(canvas, mouseEvent);
-	cumballInstances.push(new Ball(x, y));
+function addXtraCumBall(position) {
+	cumballInstances.push(new Ball(position.x, position.y));
 	document.getElementById("ball-counter").innerHTML = "Balls count: " + cumballInstances.length;
 }
 
@@ -107,7 +117,9 @@ function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	for (const cumball of cumballInstances) {
 		ctx.drawImage(cumballEntity, cumball.x - cumball.width / 2, cumball.y - cumball.height / 2, cumball.width, cumball.height);
-		cumball.trail.draw(ctx);
+		if (trailEnabled){
+			cumball.trail.draw(ctx);
+		}
 	}
 }
 
@@ -119,7 +131,7 @@ function updateCumballs() {
 
 function autoDeploy() {
 	if (deployEnabled) {
-		cumballInstances.push(new Ball(canvas.width / 2, canvas.height / 2));
+		addXtraCumBall({x:canvas.width / 2, y:canvas.height / 2});
 	}
 }
 
