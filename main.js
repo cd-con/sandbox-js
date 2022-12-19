@@ -58,7 +58,7 @@ class Trail{
 		ctx.fillColor = "#000000";
 		this.trailParticles.forEach( (e, i )=>
 		{
-			size = this.initSize - (this.initSize / length % i);
+			const size = this.initSize - (this.initSize / length % i);
 			ctx.drawRect(e.x - size / 2, e.y - size / 2, size, size);
 		})
 		
