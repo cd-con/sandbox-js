@@ -1,0 +1,8 @@
+
+class Trail{
+    trailParticles = [];
+
+    init(){
+        
+    }
+}

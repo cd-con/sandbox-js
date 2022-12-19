@@ -1,38 +1,35 @@
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
-canvas.width = 512;
-canvas.height = 480;
+canvas.width = window.innerWidth - 32;
+canvas.height = window.innerHeight - 128;
 
 const cumballEntity = new Image();
 cumballEntity.src = 'content/cumball.png';
 
-const initialVelocity = {
-	x: 32,
-	y: 32
-};
-const friction = 0.8;
-const gravity = 4.88;
-const intervalBetweenFrames = 50; // In milliseconds
+const friction = 0.9;
+const gravity = 9.81;
+const intervalBetweenFrames = 17; // In milliseconds
 
 class Ball {
-	dx = initialVelocity.x;
-	dy = initialVelocity.y;
 	constructor(x, y, width = 16, height = 16) {
 		this.x = x;
 		this.y = y;
 		this.width = width;
 		this.height = height;
+		const angle = Math.random() * Math.PI * 2;
+		const acceleration = Math.random()*16+16;
+		[this.dx, this.dy] = [Math.cos(angle)*acceleration, Math.sin(angle)*acceleration];
 	}
 	update() {
 		// Bounce off the edges
 		if (this.x + this.dx - this.width / 2 <= 0 || this.x + this.dx + this.width / 2 >= canvas.width)
-			this.dx = -this.dx * friction;
+			this.dx = -this.dx * friction * 0.35;
 
 		if (this.y + this.dy - this.height / 2 <= 0 || this.y + this.dy + this.height / 2 >= canvas.height)
-			this.dy = -this.dy * friction;
+			this.dy = -this.dy * friction * 0.45;
 		else
 			// Our only acceleration is gravity | Действительно, наше ускорение - только гравитация
-			this.dy += gravity; //Шары падают и прыгают, но сколько это будет продолжаться...
+			this.dy += 	Math.round(gravity * friction) / 10; //Шары падают и прыгают, но сколько это будет продолжаться...
 
 		this.x = Math.min(Math.max(this.x + this.dx, this.width / 2), canvas.width - this.width / 2); //Побег не удастся
 		this.y = Math.min(Math.max(this.y + this.dy, this.height / 2), canvas.height - this.height / 2); //Вообще не удастся
@@ -45,6 +42,11 @@ canvas.addEventListener('mousedown', addXtraCumBall, false);
 
 document.getElementById('play-again').addEventListener('click', () => {
 	cumballInstances = [];
+}, false);
+
+let deployEnabled = false;
+document.getElementById('auto-deploy').addEventListener('click', () => {
+	deployEnabled = !deployEnabled;
 }, false);
 
 function getRelativeCursorPosition(canvas, event) {
@@ -70,7 +72,14 @@ function updateCumballs() {
 	for (const cumball of cumballInstances) {
 		cumball.update();
 	}
+	document.getElementById("ball-counter").innerHTML = "Balls count: " + cumballInstances.length;
+}
+function autoDeploy() {
+	if (deployEnabled){
+		cumballInstances.push(new Ball(canvas.width	/ 2, canvas.height / 2));
+	}
 }
 
 setInterval(drawFrame, intervalBetweenFrames);
 setInterval(updateCumballs, intervalBetweenFrames);
+setInterval(autoDeploy, 50);
