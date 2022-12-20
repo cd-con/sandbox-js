@@ -1,4 +1,3 @@
-boom-boom
 const playAgainButton = document.getElementById('play-again')
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
@@ -19,41 +18,62 @@ let intervalBetweenBallDeploy = 25;
 
 let deployEnabled = false; // deploy controller
 let trailEnabled = true;
+
+let start;
+let FPS = 0;
 // BALL
 class Ball {
 	constructor(x, y, diameter = 16) {
+		const random = performance.now();
+
 		this.x = x;
 		this.y = y;
 		this.diameter = diameter;
-		this.state = "alive";
-		const angle = Math.random() * Math.PI * 2;
-		const acceleration = Math.random() * 16 + 16;
-		[this.dx, this.dy] = [Math.cos(angle) * acceleration, Math.sin(angle) * acceleration];
-		this.animationStage = 0;
+		const angle = random % Math.PI * 2;
+		const acceleration = random % 16 + 16;
+		this.dx = Math.cos(angle) * acceleration;
+		this.dy = Math.sin(angle) * acceleration;
 	}
-	async update() {
-		if (this.state == "alive"){
+	update() {
 		// Bounce off the edges
 		if (this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width)
 			this.dx = -this.dx * friction * 0.35;
 
 		if (this.y + this.dy - this.diameter / 2 <= 0 || this.y + this.dy + this.diameter / 2 >= canvas.height)
 			this.dy = -this.dy * friction * 0.45;
-		else
+		else {
 			// Our only acceleration is gravity | Действительно, наше ускорение - только гравитация
-			this.dy += Math.round(gravity * friction) / 10; //Шары падают и прыгают, но сколько это будет продолжаться...
+			this.dy += Math.floor(gravity * friction) / 10;
+		}
 
 		this.x = Math.min(Math.max(this.x + this.dx, this.diameter / 2), canvas.width - this.diameter / 2); //Побег не удастся
 		this.y = Math.min(Math.max(this.y + this.dy, this.diameter / 2), canvas.height - this.diameter / 2); //Вообще не удастся
-		}
-		else{
-			explosionsArray.push({framerate:24,stage:1,maxStage:12,x:this.x,y:this.y,lastFrameTime:0});
-			ballInstances.splice(ballInstances.indexOf(this),1);
-		}
+
 	};
 };
 
+class ExplosionStorage {
+	#explosions = new Map();
+	incrementor = 0;
+	constructor() {
+
+	}
+	add(explosion) {
+		this.#explosions.set(this.incrementor++, explosion);
+	}
+	remove(i) {
+		return this.#explosions.delete(i);
+	}
+	getEnumerator() {
+		return this.#explosions.entries();
+	}
+	clear() {
+		this.#explosions.clear();
+	}
+}
+
 let ballInstances = [];
+let explosionStorage = new ExplosionStorage();
 
 // Event listeners
 
@@ -63,6 +83,7 @@ canvas.addEventListener('mousedown', (mouseEvent) => {
 
 playAgainButton.addEventListener('click', () => {
 	ballInstances = [];
+	explosionStorage = new ExplosionStorage();
 }, false);
 
 document.getElementById('auto-deploy').addEventListener('click', () => {
@@ -71,7 +92,10 @@ document.getElementById('auto-deploy').addEventListener('click', () => {
 }, false);
 
 document.getElementById('detonate-balls').addEventListener('click', () => {
-	ballInstances.forEach((e) =>{e.state = "boom"})
+	while (ballInstances.length > 0) {
+		const cumball = ballInstances.pop();
+		explosionStorage.add({ framerate: 24, stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
+	}
 }, false);
 
 document.getElementById('draw-trail').addEventListener('click', () => {
@@ -89,6 +113,23 @@ function onAutodeployRateChange(interval) {
 	clearInterval(autoDeployInterval);
 	autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
 }
+function onRequestAnimFrame(timestamp) {
+	if (!start) {
+		start = timestamp;
+	}
+
+	const elapsed = timestamp - start;
+
+	FPS = 1000 / elapsed;
+
+	if (elapsed > intervalBetweenFrames) {
+		start = timestamp;
+		drawFrame();
+		showFPS();
+	}
+
+	window.requestAnimationFrame(onRequestAnimFrame);
+}
 
 function addXtraCumBall(position) {
 	ballInstances.push(new Ball(position.x, position.y));
@@ -97,7 +138,7 @@ function addXtraCumBall(position) {
 
 // Interval functions
 
-function drawFrame(ctx) {
+function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	drawExplosions();
 	for (const cumball of ballInstances) {
@@ -111,24 +152,22 @@ function drawFrame(ctx) {
 		}
 		ctx.drawImage(cumballEntity, cumball.x - cumball.diameter / 2, cumball.y - cumball.diameter / 2, cumball.diameter, cumball.diameter);
 	}
-	
+
 }
 
-let previosFrameTime, FPS;
-function calcFPS(){
-	FPS = Math.round(1000 / (performance.now() - previosFrameTime));
-	previosFrameTime = performance.now();
-}
+function showFPS() {
+	if (this.i === undefined || this.i > 10) this.i = 0; // Отличный план, очень надёжный, честно
+	this.i++;
+	if (this.i < 10) return;
 
-function drawFPS(){	
 	const uiElement = document.getElementById("fps-counter");
-	uiElement.innerHTML = `FPS(target): ${FPS} (${Math.round(1000 / intervalBetweenFrames)})`
+	uiElement.innerHTML = `FPS(target): ${FPS.toFixed(2)} (${(1000 / intervalBetweenFrames).toFixed(1)})`
 
-	if (FPS < Math.round(1000 / intervalBetweenFrames) - 12){
+	if (FPS < Math.round(1000 / intervalBetweenFrames) - 12) {
 		uiElement.style.color = "red";
-	}else if(FPS > Math.round(1000 / intervalBetweenFrames) + 4){
+	} else if (FPS > Math.round(1000 / intervalBetweenFrames) + 4) {
 		uiElement.style.color = "green";
-	}else{
+	} else {
 		uiElement.style.color = "blue";
 	}
 }
@@ -153,33 +192,29 @@ function drawTrail(start, end, initialSize, startColor, endColor) {
 
 }
 
+function drawExplosions() {
+	for (const [i, e] of explosionStorage.getEnumerator()) {
 
-let explosionsArray = []
-function drawExplosions(){
-	explosionsArray.forEach((e)=>{
-		let time;
-		if(e.lastFrameTime + intervalBetweenFrames < performance.now() ){
-			time = performance.now();
-			e.lastFrameTime = time;
-			e.stage += 1;
+		e.stage--;
+
+		if (e.stage == 0) {
+			explosionStorage.remove(i);
 		}
-		if (e.stage > e.maxStage){
-			explosionsArray.splice(explosionsArray.indexOf(e),1);
-		}
-		const frameWidth =  explosionSprites.width - explosionSprites.width / e.stage;
-		ctx.drawImage(explosionSprites, frameWidth, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
-	})
+
+		const frameStart = (11 - e.stage) * explosionSprites.width / 12;
+		ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
+	}
 }
 function updateCumballs() {
 	for (const cumball of ballInstances) {
 		cumball.update();
 	}
-	calcFPS();
 }
 
 function autoDeploy() {
 	if (deployEnabled) {
-		addXtraCumBall({ x: Math.random() * canvas.width, y: Math.random() * canvas.height });
+		const random = performance.now();
+		addXtraCumBall({ x: random % canvas.width, y: random % canvas.height });
 	}
 }
 
@@ -189,12 +224,10 @@ function getRelativeCursorPosition(canvas, event) {
 	const rect = canvas.getBoundingClientRect();
 	const x = event.clientX - rect.left;
 	const y = event.clientY - rect.top;
-	console.log("x: " + x + " y: " + y);
 
 	return { x, y };
 }
-
-setInterval(drawFrame, intervalBetweenFrames, ctx);
-setInterval(drawFPS, 50);
 let updateInterval = setInterval(updateCumballs, intervalBetweenFrames);
 let autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
+
+window.requestAnimationFrame(onRequestAnimFrame);
