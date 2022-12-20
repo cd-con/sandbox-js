@@ -1,4 +1,3 @@
-boom-boom
 const playAgainButton = document.getElementById('play-again')
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
