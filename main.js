@@ -1,4 +1,5 @@
-const playAgainButton = document.getElementById('play-again')
+const playAgainButton = document.getElementById('play-again');
+const ballCounter = document.getElementById("ball-counter");
 const canvas = document.getElementById("mainCanvas");
 const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth - 32;
@@ -18,6 +19,7 @@ let intervalBetweenBallDeploy = 25;
 
 let deployEnabled = false; // deploy controller
 let trailEnabled = true;
+let detonateBalls = false;
 
 let start;
 let FPS = 0;
@@ -52,28 +54,44 @@ class Ball {
 	};
 };
 
-class ExplosionStorage {
-	#explosions = new Map();
-	incrementor = 0;
+class ObjectStorage {
+	#objects = new Map();
+	#i = 0;
 	constructor() {
 
 	}
 	add(explosion) {
-		this.#explosions.set(this.incrementor++, explosion);
+		this.#objects.set(this.#i++, explosion);
 	}
-	remove(i) {
-		return this.#explosions.delete(i);
-	}
-	getEnumerator() {
-		return this.#explosions.entries();
+	delete(i) {
+		return this.#objects.delete(i);
 	}
 	clear() {
-		this.#explosions.clear();
+		this.#objects.clear();
+	}
+	entries() {
+		return this.#objects.entries();
+	}
+	keys (){
+		return this.#objects.keys();
+	}
+	values(){
+		return this.#objects.values();
+	}
+	removeFirst() {
+		const key = this.#objects.keys().next().value;
+		const object = this.#objects.get(key);
+
+		this.#objects.delete(key);
+		return object;
+	};
+	get size() {
+		return this.#objects.size;
 	}
 }
 
-let ballInstances = [];
-let explosionStorage = new ExplosionStorage();
+let ballStorage = new ObjectStorage();
+let explosionStorage = new ObjectStorage();
 
 // Event listeners
 
@@ -82,8 +100,8 @@ canvas.addEventListener('mousedown', (mouseEvent) => {
 }, false);
 
 playAgainButton.addEventListener('click', () => {
-	ballInstances = [];
-	explosionStorage = new ExplosionStorage();
+	ballStorage = new ObjectStorage();
+	explosionStorage = new ObjectStorage();
 }, false);
 
 document.getElementById('auto-deploy').addEventListener('click', () => {
@@ -92,10 +110,7 @@ document.getElementById('auto-deploy').addEventListener('click', () => {
 }, false);
 
 document.getElementById('detonate-balls').addEventListener('click', () => {
-	while (ballInstances.length > 0) {
-		const cumball = ballInstances.pop();
-		explosionStorage.add({ framerate: 24, stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
-	}
+	detonateBalls = true;
 }, false);
 
 document.getElementById('draw-trail').addEventListener('click', () => {
@@ -105,15 +120,13 @@ document.getElementById('draw-trail').addEventListener('click', () => {
 
 function onPhysicsRefreshRateChange(interval) {
 	intervalBetweenFrames = interval;
-	clearInterval(updateInterval);
-	updateInterval = setInterval(updateCumballs, intervalBetweenFrames);
 }
 function onAutodeployRateChange(interval) {
 	intervalBetweenBallDeploy = interval;
 	clearInterval(autoDeployInterval);
 	autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
 }
-function onRequestAnimFrame(timestamp) {
+function mainFrame(timestamp) {
 	if (!start) {
 		start = timestamp;
 	}
@@ -124,16 +137,25 @@ function onRequestAnimFrame(timestamp) {
 
 	if (elapsed > intervalBetweenFrames) {
 		start = timestamp;
+		updateCumballs();
 		drawFrame();
 		showFPS();
+		if (detonateBalls) {
+			if (ballStorage.size > 0) {
+				const cumball = ballStorage.removeFirst();
+				explosionStorage.add({ framerate: 24, stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
+				ballCounter.innerHTML = "Balls count: " + ballStorage.size;
+			}
+			else detonateBalls = false;
+		}
 	}
 
-	window.requestAnimationFrame(onRequestAnimFrame);
+	window.requestAnimationFrame(mainFrame);
 }
 
 function addXtraCumBall(position) {
-	ballInstances.push(new Ball(position.x, position.y));
-	document.getElementById("ball-counter").innerHTML = "Balls count: " + ballInstances.length;
+	ballStorage.add(new Ball(position.x, position.y));
+	ballCounter.innerHTML = "Balls count: " + ballStorage.size;
 }
 
 // Interval functions
@@ -141,8 +163,8 @@ function addXtraCumBall(position) {
 function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
 	drawExplosions();
-	for (const cumball of ballInstances) {
-		if (trailEnabled) {
+	for (const cumball of ballStorage.values()) {
+		if (trailEnabled && (cumball.dx ** 2 + cumball.dy ** 2) ** 0.5 > cumball.diameter / 2) {
 			drawTrail(
 				{ x: cumball.x, y: cumball.y },
 				{ x: cumball.x - cumball.dx, y: cumball.y - cumball.dy },
@@ -173,6 +195,7 @@ function showFPS() {
 }
 
 function drawTrail(start, end, initialSize, startColor, endColor) {
+
 	const angle = Math.atan2(end.y - start.y, end.x - start.x);
 	const upperPointAngle = angle - Math.PI / 2;
 	const lowerPointAngle = angle + Math.PI / 2;
@@ -193,12 +216,12 @@ function drawTrail(start, end, initialSize, startColor, endColor) {
 }
 
 function drawExplosions() {
-	for (const [i, e] of explosionStorage.getEnumerator()) {
+	for (const [i, e] of explosionStorage.entries()) {
 
 		e.stage--;
 
 		if (e.stage == 0) {
-			explosionStorage.remove(i);
+			explosionStorage.delete(i);
 		}
 
 		const frameStart = (11 - e.stage) * explosionSprites.width / 12;
@@ -206,7 +229,7 @@ function drawExplosions() {
 	}
 }
 function updateCumballs() {
-	for (const cumball of ballInstances) {
+	for (const cumball of ballStorage.values()) {
 		cumball.update();
 	}
 }
@@ -227,7 +250,6 @@ function getRelativeCursorPosition(canvas, event) {
 
 	return { x, y };
 }
-let updateInterval = setInterval(updateCumballs, intervalBetweenFrames);
 let autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
 
-window.requestAnimationFrame(onRequestAnimFrame);
+window.requestAnimationFrame(mainFrame);
