@@ -16,10 +16,10 @@
         <button id="auto-deploy">Deploy balls automatically ❌</button>
         <button id="draw-trail">Draw trails ✔</button>
         <button id="detonate-balls">Boom 💣💥</button>
-        <input type="range" id="physx" name="physics" min="16" max="250" oninput="onPhysicsRefreshRateChange(this.value)">
-        <label for="physics">Physics update rate (from 16ms (around 60 FPS) to 250ms (4 FPS))</label>
-        <input type="range" id="drate" name="deploy-rate" min="5" max="250" oninput="onAutodeployRateChange(this.value)">
-        <label for="deploy-rate">Autodeploy rate (from 5ms to 250ms)</label>
+        <input type="range" name="Tickrate" min="8" max="256" step="8" oninput="onTickrateChange(this.value)">
+        <label for="Tickrate">Tickrate</label>
+        <input type="range" name="maxFramerate" min="16" max="150" step="10" oninput="onMaxFramerateChange(this.value)">
+        <label for="maxFramerate">Max framerate</label>
     <div style="display: inline;">
         <div id="ball-counter">Balls count: 0</div>
         <div id="fps-counter">FPS(target): 0 (0)</div>    

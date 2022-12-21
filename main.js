@@ -23,6 +23,7 @@ let detonateBalls = false;
 
 let start;
 let FPS = 0;
+
 // BALL
 class Ball {
 	constructor(x, y, diameter = 16) {
@@ -118,14 +119,16 @@ document.getElementById('draw-trail').addEventListener('click', () => {
 	document.getElementById('draw-trail').innerHTML = `Draw trails ${trailEnabled ? "✔" : "❌"}`;
 }, false);
 
-function onPhysicsRefreshRateChange(interval) {
+function onTickrateChange(interval) {
+	tickrate = interval;
+	clearInterval(logicTickInterval);
+	logicTickInterval = setInterval(logicFrame, 1000/tickrate);
+}
+
+function onMaxFramerateChange(interval) {
 	intervalBetweenFrames = interval;
 }
-function onAutodeployRateChange(interval) {
-	intervalBetweenBallDeploy = interval;
-	clearInterval(autoDeployInterval);
-	autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
-}
+
 function mainFrame(timestamp) {
 	if (!start) {
 		start = timestamp;
@@ -137,20 +140,18 @@ function mainFrame(timestamp) {
 
 	if (elapsed > intervalBetweenFrames) {
 		start = timestamp;
-		updateCumballs();
 		drawFrame();
 		showFPS();
-		if (detonateBalls) {
-			if (ballStorage.size > 0) {
-				const cumball = ballStorage.removeFirst();
-				explosionStorage.add({ framerate: 24, stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
-				ballCounter.innerHTML = "Balls count: " + ballStorage.size;
-			}
-			else detonateBalls = false;
-		}
 	}
 
 	window.requestAnimationFrame(mainFrame);
+}
+
+let tickrate = 8;
+function logicFrame(){
+	updateCumballs();
+	explosionLogic();
+	autoDeploy();
 }
 
 function addXtraCumBall(position) {
@@ -158,11 +159,21 @@ function addXtraCumBall(position) {
 	ballCounter.innerHTML = "Balls count: " + ballStorage.size;
 }
 
+function explosionLogic(){
+	if (detonateBalls) {
+		if (ballStorage.size > 0) {
+			const cumball = ballStorage.removeFirst();
+			explosionStorage.add({stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
+			ballCounter.innerHTML = "Balls count: " + ballStorage.size;
+		}
+		else detonateBalls = false;
+	}
+}
+
 // Interval functions
 
 function drawFrame() {
 	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	drawExplosions();
 	for (const cumball of ballStorage.values()) {
 		if (trailEnabled && (cumball.dx ** 2 + cumball.dy ** 2) ** 0.5 > cumball.diameter / 2) {
 			drawTrail(
@@ -174,6 +185,7 @@ function drawFrame() {
 		}
 		ctx.drawImage(cumballEntity, cumball.x - cumball.diameter / 2, cumball.y - cumball.diameter / 2, cumball.diameter, cumball.diameter);
 	}
+	drawExplosions();
 
 }
 
@@ -250,6 +262,6 @@ function getRelativeCursorPosition(canvas, event) {
 
 	return { x, y };
 }
-let autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
+let logicTickInterval = setInterval(logicFrame, 1000/tickrate);
 
 window.requestAnimationFrame(mainFrame);
