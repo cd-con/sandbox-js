@@ -50,7 +50,7 @@ const gravity = .981;
 
 for (const element of document.getElementsByClassName("numberic-input")) {
 	element.value = 1;
-	element.placeholder= `${element.min}-${element.max}`;
+	element.placeholder = `${element.min}-${element.max}`;
 }
 
 let ballAdditionAmount = ballAdditionElement.getElementsByClassName("ball-amount")[0].value;
@@ -95,8 +95,8 @@ class Ball {
 			this.dy *= friction;
 		}
 
-		this.x = Math.min(Math.max(this.x + this.dx, this.diameter / 2), canvas.width - this.diameter / 2); //Побег не удастся
-		this.y = Math.min(Math.max(this.y + this.dy, this.diameter / 2), canvas.height - this.diameter / 2); //Вообще не удастся
+		this.x += this.dx;
+		this.y += this.dy;
 
 	};
 };
@@ -238,6 +238,7 @@ canvas.addEventListener('mousedown', (mouseEvent) => {
 playAgainButton.addEventListener('click', () => {
 	ballStorage = new ObjectStorage();
 	explosionStorage = new ObjectStorage();
+	ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 }, false);
 
 function toggleBallExplosion(isEnabled) {
@@ -261,13 +262,19 @@ function toggleAutoBallAddition(isEnabled) {
 		ticks.unsubscribe(autoBallAddition);
 }
 function onTPSSliderChange(index) {
-	tps = tpsSliderValues[index];
+	changeTPS(tpsSliderValues[index]);
+}
+function onFPSSliderChange(index) {
+	changeFPS(fpsSliderValues[index]);
+}
+function changeTPS(_tps) {
+	tps = _tps
 	clearInterval(tickInterval);
 	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
 	updatesElement.innerHTML = tps.toFixed(0);
 }
-function onFPSSliderChange(index) {
-	fps = fpsSliderValues[index];
+function changeFPS(_fps) {
+	fps = _fps
 	framesElement.innerHTML = fps.toFixed(0);
 }
 function changeBallAdditionInterval(interval) {
@@ -317,20 +324,28 @@ function showFPS() {
 }
 
 function drawBalls() {
+	const positions = [];
 	for (const cumball of ballStorage.values()) {
-		ctx.drawImage(cumballEntity, cumball.x - cumball.diameter / 2, cumball.y - cumball.diameter / 2, cumball.diameter, cumball.diameter);
+		if (positions.findIndex(c => Math.abs(c.x - cumball.x) < 1.5 && Math.abs(c.y - cumball.y) < 1.5) == -1) {
+			ctx.drawImage(cumballEntity, cumball.x - cumball.diameter / 2, cumball.y - cumball.diameter / 2, cumball.diameter, cumball.diameter);
+			positions.push({ x: cumball.x, y: cumball.y });
+		}
 	}
-
 }
 function drawTrails() {
+	const positions = [];
 	for (const cumball of ballStorage.values()) {
-		if ((cumball.dx ** 2 + cumball.dy ** 2) ** 0.5 > cumball.diameter / 2) {
-			drawTrail(
-				{ x: cumball.x, y: cumball.y },
-				{ x: cumball.x - cumball.dx, y: cumball.y - cumball.dy },
-				cumball.diameter,
-				"rgba(127,127,127,255)", "rgba(0,0,0,0)"
-			);
+		if (positions.findIndex(c => Math.abs(c.x - cumball.x) < 1.5 && Math.abs(c.y - cumball.y) < 1.5) == -1) {
+			if ((cumball.dx ** 2 + cumball.dy ** 2) ** 0.5 > cumball.diameter / 2) {
+				drawTrail(
+					{ x: cumball.x, y: cumball.y },
+					{ x: cumball.x - cumball.dx, y: cumball.y - cumball.dy },
+					cumball.diameter,
+					"rgba(127,127,127,255)", "rgba(0,0,0,0)"
+				);
+			}
+
+			positions.push({ x: cumball.x, y: cumball.y });
 		}
 	}
 }
@@ -357,15 +372,14 @@ function drawTrail(start, end, initialSize, startColor, endColor) {
 
 function drawExplosions() {
 	for (const [i, e] of explosionStorage.entries()) {
-
 		e.stage--;
 
 		if (e.stage == 0) {
 			explosionStorage.delete(i);
+		} {
+			const frameStart = (11 - e.stage) * explosionSprites.width / 12;
+			ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
 		}
-
-		const frameStart = (11 - e.stage) * explosionSprites.width / 12;
-		ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
 	}
 
 	if (explosionStorage.size === 0) animFrames.unsubscribe(drawExplosions);
@@ -379,6 +393,16 @@ function getRelativeCursorPosition(canvas, event) {
 	const y = event.clientY - rect.top;
 
 	return { x, y };
+}
+function freezeGame() {
+	animFrames.unsubscribe(drawExplosions);
+	changeTPS(0);
+}
+function unfreezeGame() {
+	tps = tpsSliderValues[tpsSlider.value];
+	changeTPS(tps);
+	if (explosionStorage.size > 0)
+		animFrames.subscribe(drawExplosions, 1, 2);
 }
 function compareFunction(a, b) {
 	return a - b;

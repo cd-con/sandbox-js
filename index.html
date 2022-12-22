@@ -20,6 +20,9 @@
 		<input type="checkbox" id="draw-trail" oninput="toggleDrawTrail(this.checked)" checked>
 		<label for="draw-trail">Draw trail</label>
 
+		<input type="checkbox" id="freeze" oninput="if(this.checked) freezeGame(); else unfreezeGame()">
+		<label for="freeze">Freeze game</label>
+
 		<div id="sliders">
 			<div id="tps">
 				<input id="tps-slider" type="range" name="tps" min="0" value="0"
