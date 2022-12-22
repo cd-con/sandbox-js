@@ -1,0 +1,49 @@
+* {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	text-decoration: none;
+}
+
+#canvas {
+	border: solid 10px black;
+	background: grey;
+}
+
+input[type="checkbox"] {
+	display: none;
+}
+
+input[type="checkbox"]+label {
+	color: red;
+}
+
+input[type="checkbox"]:checked+label {
+	color: green;
+}
+
+input[type="number"] {
+	max-width: min-content;
+	text-align: center;
+}
+
+.options label,
+#sliders div {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-start;
+}
+
+.options label *,
+#sliders div * {
+	margin-right: 0.5em;
+}
+.options label{
+	max-width: min-content;
+}
+
+#sliders {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+}
