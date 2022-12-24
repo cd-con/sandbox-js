@@ -1,97 +1,117 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
+	<head>
+		<meta charset='utf-8'>
+		<meta http-equiv='X-UA-Compatible' content='IE=edge'>
+		<title>Balls is undefined</title>
+		<meta name='viewport' content='width=device-width, initial-scale=1'>
+		<link rel="icon" href="favicon.ico" />
+		<link href="style.css" rel="stylesheet"/>
+	</head>
 
-<head>
-	<meta charset='utf-8'>
-	<meta http-equiv='X-UA-Compatible' content='IE=edge'>
-	<title>Our shitty game</title>
-	<meta name='viewport' content='width=device-width, initial-scale=1'>
-	<link rel="icon" href="favicon.ico" />
-	<link href="style.css" rel="stylesheet"/>
-</head>
-
-<body>
-	<div class="in-one-line">
+	<body>
 		<canvas id="canvas"></canvas>
-	</div>
-	<!-- Набор инструментов -->
-	<div>
-		<div class="in-one-line"; style="width: 50%;">
-			<button id="play-again">Reset</button>
-			<button id="show-settings">Settings</button>
-			<p id="ball-counter">Balls count: 0</p>
-			<p id="fps-counter">FPS(target): 0 (0)</p>
-		</div>
-		
-		<!-- Диалоговое окно настроек-->
-		<dialog id="dialog" class="dialog-style">
-				<div class="in-one-line" id="dialog-header">
-					<p>Settings</p>
+		<!-- Набор инструментов -->
+		<div>
+			<div class="in-one-line"; style="width: 27%; padding-left: 10px;">
+				<button id="play-again">Reset</button>
+				<button id="show-settings">Settings</button>
+				<button id="show-about">About</button>
+				<p id="ball-counter">Balls count: 0</p>
+				<p id="fps-counter">FPS(target): 0 (0)</p>
+			</div>
+			
+			<!-- Диалоговое окно настроек-->
+			<dialog id="dialog-settings" class="dialog-style">
+					<div class="in-one-line" id="dialog-header">
+						<p>Settings</p>
+						<div>
+							<button id="close-settings">X</button>
+						</div>
+					</div>		
 					<div>
-						<button id="close-settings">X</button>
+						<input type="checkbox" id="draw-trail" oninput="toggleDrawTrail(this.checked)" checked>
+						<label for="draw-trail">Draw trail</label>
 					</div>
-				</div>		
+					<div>
+						<input type="checkbox" id="freeze" oninput="if(this.checked) freezeGame(); else unfreezeGame()">
+						<label for="freeze">Freeze game</label>
+					</div>
+					<div>
+						<input type="checkbox" id="mute" oninput="soundMuted = this.checked">
+						<label for="mute">Mute sounds</label>
+					</div>
+					<div id="sliders">
+						<div id="tps">
+							<input id="tps-slider" type="range" name="tps" min="0" value="60"
+								onchange="onTPSSliderChange(this.value)">
+							<p id="updates">60</p> TPS
+						</div>
+			
+						<div id="fps">
+							<input id="fps-slider" type="range" name="fps" min="0" value="60"
+								onchange="onFPSSliderChange(this.value)">
+							<p id="frames">60</p> FPS
+						</div>
+					</div>
+					<!-- Idk what here happens, dude -->
+					<div id="options">
+						<div id="ball-addition" class="options">
+							<input type="checkbox" id="auto-ball-addition" class="hide-checkbox" oninput="toggleAutoBallAddition(this.checked)">
+							<label for="auto-ball-addition">Add <input class="numberic-input ball-amount" type="number" min="1"
+									max="600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
+							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
+							ballsAddedPerTick = parseInt(this.value);">
+								<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
+									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
+							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
+							changeBallAdditionInterval(parseInt(this.value));">
+								<p class="ticks">tick</p>
+							</label>
+						</div>
+			
+						<div id="ball-explosion" class="options">
+							<input type="checkbox" id="explode-balls" class="hide-checkbox" oninput="toggleBallExplosion(this.checked)">
+							<label for="explode-balls">Explode <input class="numberic-input ball-amount" type="number" min="1"
+									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
+							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
+							ballsExplodedPerTick = parseInt(this.value);">
+								<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
+									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
+							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
+							changeBallExplosionInterval(parseInt(this.value));">
+								<p class="ticks">tick</p>
+							</label>
+						</div>
+						<div id="max-sounds-count" class="options">
+								Sound limit of <input id="sound-limit" class="numberic-input sounds-count" type="number" min="4"
+									max="32" value="32" onchange="this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
+							soundLimiter = parseInt(this.value);">sounds
+						</div>
+					</div>
+			</dialog>
+		</div>
+
+		<!-- Диалоговое окно авторов-->
+		<dialog id="dialog-about" class="dialog-style">
+			<div class="in-one-line" id="dialog-header">
+				<p>About</p>
 				<div>
-					<input type="checkbox" id="draw-trail" oninput="toggleDrawTrail(this.checked)" checked>
-					<label for="draw-trail">Draw trail</label>
+					<button id="close-about">X</button>
 				</div>
-				<div>
-					<input type="checkbox" id="freeze" oninput="if(this.checked) freezeGame(); else unfreezeGame()">
-					<label for="freeze">Freeze game</label>
-				</div>
-				<div>
-					<input type="checkbox" id="mute" oninput="soundMuted = this.checked">
-					<label for="mute">Mute sounds</label>
-				</div>
-				<div id="sliders">
-					<div id="tps">
-						<input id="tps-slider" type="range" name="tps" min="0" value="60"
-							onchange="onTPSSliderChange(this.value)">
-						<p id="updates">60</p> TPS
-					</div>
-		
-					<div id="fps">
-						<input id="fps-slider" type="range" name="fps" min="0" value="60"
-							onchange="onFPSSliderChange(this.value)">
-						<p id="frames">60</p> FPS
-					</div>
-				</div>
-				<!-- Idk what here happens, dude -->
-				<div id="options">
-					<div id="ball-addition" class="options">
-						<input type="checkbox" id="auto-ball-addition" class="hide-checkbox" oninput="toggleAutoBallAddition(this.checked)">
-						<label for="auto-ball-addition">Add <input class="numberic-input ball-amount" type="number" min="1"
-								max="600" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
-						this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
-						ballsAddedPerTick = parseInt(this.value);">
-							<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
-								max="3600" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
-						this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
-						changeBallAdditionInterval(parseInt(this.value));">
-							<p class="ticks">tick</p>
-						</label>
-					</div>
-		
-					<div id="ball-explosion" class="options">
-						<input type="checkbox" id="explode-balls" class="hide-checkbox" oninput="toggleBallExplosion(this.checked)">
-						<label for="explode-balls">Explode <input class="numberic-input ball-amount" type="number" min="1"
-								max="3600" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
-						this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
-						ballsExplodedPerTick = parseInt(this.value);">
-							<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
-								max="3600" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
-						this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
-						changeBallExplosionInterval(parseInt(this.value));">
-							<p class="ticks">tick</p>
-						</label>
-					</div>
-				</div>
+			</div>	
+			<div>	
+				"Balls is undefined" by	<a href="https://github.com/cd-con">cd-con</a> and <a href="https://github.com/Terrarianec"> Terrarianec </a>
+			</div>
+			<div>
+				<p>Last modification: 24.12.2022</p>
+			</div>
 		</dialog>
 	</div>
-	<!-- Скрипт -->
-	<script src='dialog.js'></script>
-	<script src='main.js'></script>
+		<!-- Скрипт -->
+		<script src='settings_dialog.js'></script>
+		<script src='about_dialog.js'></script>
+		<script src='main.js'></script>
 
-</body>
-
+	</body>
 </html>

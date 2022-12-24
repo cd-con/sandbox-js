@@ -12,6 +12,9 @@ body {
     line-height: 1.5;
     color: #292b2c;
     background-color: #fff;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
 } 
 
 #canvas {
@@ -32,7 +35,7 @@ body {
 }
 
 input[type="number"] {
-	max-width: min-content;
+	max-width:fit-content;
 	text-align: center;
 }
 
@@ -77,3 +80,8 @@ input[type="number"] {
 	display: flex;
 	justify-content: space-between;
 }
+
+.in-one-line p {
+	 display: inline;
+	 white-space: nowrap;
+	}

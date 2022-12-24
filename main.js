@@ -38,7 +38,6 @@ const tpsSliderValues = [
 
 // Задаём значения по умолчанию и placeholder'ы для ввода цифр
 for (const element of document.getElementsByClassName("numberic-input")) {
-	element.value = 1;
 	element.placeholder = `${element.min}-${element.max}`;
 }
 
@@ -49,6 +48,8 @@ let tps = tpsSliderValues.at(-1); // Обновления физики в сек
 let fps = fpsSliderValues.at(-1); // Обновление области отрисовки в секунду
 
 let soundMuted = false;
+let globalSoundsCounter = 0;
+let soundLimiter = 32;
 
 //
 // Спрайты
@@ -65,7 +66,7 @@ let ballsExplodedPerTick = ballExplosionElement.getElementsByClassName("ball-amo
 let calculatedFPS = 0;
 let calculatedTPS = 0;
 
-// classes
+// Классы
 class Ball {
 	constructor(x, y, diameter = 16) {
 		const random = performance.now();
@@ -176,7 +177,7 @@ class Ticks {
 		}
 
 		if (ballStorage.size !== ballsAmount)
-			ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
+			ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;	
 	}
 	subscribe(_function, interval) {
 		this.#listeners.set(_function, interval);
@@ -243,14 +244,23 @@ class SoundQueue
 	}
 
 	update(){
-		this.clipQueue.forEach(audioClip => {
-			audioClip.play();
-		});
-		this.clipQueue = [];
+		for (const audioClip of this.clipQueue) {			
+			if (audioClip.paused){
+				audioClip.play();		
+			}
+		}
 	}
 
 	play(){
-		this.clipQueue.push(new Audio(this.clipSrc));
+		if (globalSoundsCounter<soundLimiter){
+			const ac = new Audio(this.clipSrc);
+			this.clipQueue.push(ac);
+			ac.addEventListener('ended', () => {
+				this.clipQueue.splice(this.clipQueue.indexOf(ac), 1);
+				globalSoundsCounter--;
+			});
+			globalSoundsCounter++;
+		}
 	}
 }
 
@@ -258,7 +268,7 @@ const ticks = new Ticks();
 const animFrames = new AnimFrames();
 
 let ballStorage = new ObjectStorage();
-const explosionSoundClip = bounceSoundPlayer = new SoundQueue("content/sounds/explosion.mp3");
+const explosionSoundClip = new SoundQueue("content/sounds/explosion.mp3");
 let explosionStorage = new ObjectStorage();
 
 // Event listeners
