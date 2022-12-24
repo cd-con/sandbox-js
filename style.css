@@ -5,20 +5,29 @@
 	text-decoration: none;
 }
 
+body {
+    font-family: -apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #292b2c;
+    background-color: #fff;
+} 
+
 #canvas {
 	border: solid 10px black;
 	background: grey;
 }
 
-input[type="checkbox"] {
+.hide-checkbox{
 	display: none;
 }
 
-input[type="checkbox"]+label {
+.hide-checkbox+label {
 	color: red;
 }
 
-input[type="checkbox"]:checked+label {
+.hide-checkbox:checked+label {
 	color: green;
 }
 
@@ -46,4 +55,25 @@ input[type="number"] {
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-start;
+}
+
+/* Стили для диалогового окна*/
+.dialog-style{
+	border-radius: 1em;
+	padding: 1em;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin-right: -50%;
+	transform: translate(-50%, -50%)
+}
+
+#dialog-header{
+	font-weight: bold;
+	border-bottom: 1px solid #aaa;
+}
+
+.in-one-line{
+	display: flex;
+	justify-content: space-between;
 }
