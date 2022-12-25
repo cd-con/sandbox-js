@@ -1,6 +1,9 @@
+const aboutDialog = document.getElementById('dialog-about');
+aboutDialog.innerHTML = aboutDialog.innerHTML.replaceAll("%Title%", document.title);
+
 const showAboutButton = document.getElementById('show-about');
 const closeAboutButton = document.getElementById('close-about');
-const aboutDialog = document.getElementById('dialog-about');
+
 showAboutButton.addEventListener('click', () => {
     aboutDialog.showModal();
 });

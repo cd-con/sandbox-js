@@ -5,6 +5,7 @@ canvas.height = window.innerHeight - 50;
 
 const playAgainButton = document.getElementById('play-again');
 const ballCounter = document.getElementById("ball-counter");
+const freezeCheckbox = document.getElementById("freeze");
 
 const ballAdditionElement = document.getElementById("ball-addition");
 const ballExplosionElement = document.getElementById("ball-explosion");
@@ -35,6 +36,27 @@ const tpsSliderValues = [
 	30,
 	60
 ].sort(compareFunction);
+
+const sources = [
+	{
+		name: "arab",
+		src: "content/sounds/arab.mp3",
+		baseVolume: 0.5,
+		volumeStep: 0
+	},
+	{
+		name: "bounce",
+		src: "content/sounds/bounce.mp3",
+		baseVolume: 0.5,
+		volumeStep: 0.01
+	},
+	{
+		name: "explosion",
+		src: "content/sounds/bounce.mp3",
+		baseVolume: 0.5,
+		volumeStep: 0.01
+	}
+];
 
 // Задаём значения по умолчанию и placeholder'ы для ввода цифр
 for (const element of document.getElementsByClassName("numberic-input")) {
@@ -70,45 +92,41 @@ let calculatedTPS = 0;
 class Ball {
 	constructor(x, y, diameter = 16) {
 		const random = performance.now();
-
-		this.x = x;
-		this.y = y;
-		this.diameter = diameter;
 		const angle = random % Math.PI * 2;
 		const acceleration = random % 16 + 16;
+
+		this.x = Math.max(diameter, Math.min(canvas.width - diameter, x));
+		this.y = Math.max(diameter, Math.min(canvas.height - diameter, y));
+		this.diameter = diameter;
 		this.dx = Math.cos(angle) * acceleration;
 		this.dy = Math.sin(angle) * acceleration;
-		
-		this.bounceSoundPlayer = new SoundQueue("content/sounds/bounce.mp3");
 	}
 	update() {
-		const isCollided = this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width || this.y + this.dy - this.diameter / 2 <= 0 || this.y + this.dy + this.diameter / 2 >= canvas.height;
-		
+		let isCollided = false;
+
 		// Bounce off the edges
-		if (this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width) {
+		if (this.x + this.dx < this.diameter / 2 || this.x + this.dx + this.diameter / 2 >= canvas.width) {
 			this.dx = -this.dx * 0.35;
+			isCollided = true;
 		}
 
-		if (this.y + this.dy - this.diameter / 2 <= 0) {
+		if (this.y + this.dy < this.diameter / 2 || this.y + this.dy + this.diameter / 2 >= canvas.height) {
 			this.dy = -this.dy * 0.45;
+			isCollided = true;
 		}
-		if(this.y + this.dy + this.diameter / 2 >= canvas.height){
-			this.dy = -this.dy * 0.45;
-		}			
-		else{
+		else {
 			this.dy += gravity;
 		}
+
 		if (isCollided) {
 			this.dx *= friction;
 			this.dy *= friction;
 		}
 
-		if (!soundMuted && Math.abs(this.dy) > 1 && isCollided){
-			this.isCollidedEarlierWithGround = true;
-			this.bounceSoundPlayer.play();
-			this.bounceSoundPlayer.update();
+		if (isCollided && Math.abs(this.dy) > 3) {
+			audioPlayer.play(audioPlayer.identifiers.bounce);
 		}
-		
+
 		this.x += this.dx;
 		this.y += this.dy;
 	};
@@ -177,7 +195,7 @@ class Ticks {
 		}
 
 		if (ballStorage.size !== ballsAmount)
-			ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;	
+			ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 	}
 	subscribe(_function, interval) {
 		this.#listeners.set(_function, interval);
@@ -235,40 +253,143 @@ class AnimFrames {
 	}
 };
 
-// Дима опять меня убьёт за говнокод
-class SoundQueue
-{
-	constructor(clipSrc){
-		this.clipSrc = clipSrc;
-		this.clipQueue = [];
+// Меня убьют за говнокод
+class AudioPlayer {
+	readyState = 0;
+	/*
+	 * 0 - initializing
+	 * 1 - ready
+	 */
+	#queue = [];
+	#sources = [];
+	#audio = [];
+	#looped = new Set();
+	#paused = false;
+	#identifiers = null;
+	#muted = false;
+
+	constructor(sources = []) {
+		for (const source of sources)
+			this.addSource(source);
+		this.readyState = 1;
 	}
 
-	update(){
-		for (const audioClip of this.clipQueue) {			
-			if (audioClip.paused){
-				audioClip.play();		
+	addSource(source) {
+		if (source === undefined) return;
+
+		const audio = this.#audio[this.#audio.push(new Audio(source.src)) - 1];
+
+		audio.oncanplaythrough = () => {
+			this.#sources.push({ name: source.name, src: audio.src, duration: audio.duration, baseVolume: source.baseVolume, volumeStep: source.volumeStep });
+		}
+		this.#identifiers = null;
+	}
+
+	get identifiers() {
+		if (this.#identifiers) return this.#identifiers;
+
+		const identifiers = {};
+
+		for (let i = 0; i < this.#sources.length; i++) {
+			const source = this.#sources[i];
+			identifiers[source.name] = i;
+		}
+
+		this.#identifiers = identifiers;
+
+		return identifiers;
+	}
+
+	get muted() {
+		return this.#muted;
+	}
+
+	set muted(value) {
+		this.#muted = !!value;
+		if (this.#muted) {
+			for (const audio of this.#audio) {
+				audio.pause();
+			}
+		} else {
+			if (!this.#paused)
+				for (const index of this.#looped) {
+					this.#audio[index].play();
+				}
+		}
+	}
+
+	update() {
+		const now = performance.now();
+		this.#queue = this.#queue.filter(s => (now - s.startAt) / 1000 < this.#sources[s.id].duration);
+
+		if (this.readyState === 0 || this.#muted) return;
+
+		const queue = this.#queue;
+		const volumeArray = this.#sources.map(s => s.baseVolume);
+
+		for (let i = 0; i < queue.length; i++) {
+			const audio = this.#audio[queue[i].id];
+			const source = this.#sources[queue[i].id];
+
+			if (source.src !== audio.src)
+				audio.src = source.src;
+
+			if (volumeArray[queue[i].id] < 1) volumeArray[queue[i].id] += source.volumeStep;
+
+			if (audio.paused)
+				audio.play();
+		}
+		for (let i = 0; i < volumeArray.length; i++) {
+			if (this.#audio[i]) this.#audio[i].volume = Math.max(0, Math.min(volumeArray[i], 1));
+		}
+	}
+
+	play(identifier) {
+		this.#queue.push({ id: identifier, startAt: performance.now() });
+	}
+
+	playLoop(identifier, volume = .25) {
+		const audio = this.#audio[identifier];
+		audio.loop = true;
+		this.#looped.add(identifier);
+		if (!this.#paused && !this.#muted) audio.play();
+		audio.volume = volume;
+	}
+
+	endLoop(identifier, resetProgress = true) {
+		const audio = this.#audio[identifier];
+		audio.loop = false;
+		this.#looped.delete(identifier);
+		if (resetProgress) audio.load();
+		else audio.pause();
+	}
+
+	pause() {
+		for (const audio of this.#audio) {
+			audio.pause();
+		}
+		this.#paused = true;
+	}
+
+	resume() {
+		if (!this.#muted) {
+			for (const index of this.#looped) {
+				this.#audio[index].play();
 			}
 		}
-	}
-
-	play(){
-		if (globalSoundsCounter<soundLimiter){
-			const ac = new Audio(this.clipSrc);
-			this.clipQueue.push(ac);
-			ac.addEventListener('ended', () => {
-				this.clipQueue.splice(this.clipQueue.indexOf(ac), 1);
-				globalSoundsCounter--;
-			});
-			globalSoundsCounter++;
-		}
+		this.#paused = false;
 	}
 }
 
 const ticks = new Ticks();
 const animFrames = new AnimFrames();
+const audioPlayer = new AudioPlayer();
+
+for (const source of sources) {
+	audioPlayer.addSource(source);
+}
 
 let ballStorage = new ObjectStorage();
-const explosionSoundClip = new SoundQueue("content/sounds/explosion.mp3");
 let explosionStorage = new ObjectStorage();
 
 // Event listeners
@@ -284,13 +405,19 @@ playAgainButton.addEventListener('click', () => {
 	ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 }, false);
 
-addEventListener("resize", () => {resizeCanvas()});
+addEventListener("resize", resizeCanvas);
+
+// Switchers
 
 function toggleBallExplosion(isEnabled) {
-	if (isEnabled)
+	if (isEnabled) {
 		ticks.subscribe(explodeBalls, parseInt(ballExplosionElement.getElementsByClassName("tick-interval")[0].value));
-	else
+		audioPlayer.playLoop(audioPlayer.identifiers.arab);
+	}
+	else {
 		ticks.unsubscribe(explodeBalls);
+		audioPlayer.endLoop(audioPlayer.identifiers.arab);
+	}
 }
 
 function toggleDrawTrail(isEnabled) {
@@ -306,27 +433,39 @@ function toggleAutoBallAddition(isEnabled) {
 	else
 		ticks.unsubscribe(autoBallAddition);
 }
+
+// freeze/unfreeze
+
+function freezeGame() {
+	animFrames.subscribe(drawFrozenMask, 1);
+	audioPlayer.pause();
+	changeTPS(0);
+}
+
+function unfreezeGame() {
+	tps = tpsSliderValues[tpsSlider.value];
+	audioPlayer.resume();
+	changeTPS(tps);
+	animFrames.unsubscribe(drawFrozenMask);
+}
+
+// Slider handlers
+
 function onTPSSliderChange(index) {
-	if(tps == 0){
-		document.getElementById("freeze").checked = false;
+	if (tps == 0) {
+		freezeCheckbox.checked = false;
 		unfreezeGame();
-	}else{
+	} else {
 		changeTPS(tpsSliderValues[index]);
 	}
 }
+
 function onFPSSliderChange(index) {
 	changeFPS(fpsSliderValues[index]);
 }
-function changeTPS(_tps) {
-	tps = _tps
-	clearInterval(tickInterval);
-	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
-	updatesElement.innerHTML = tps.toFixed(0);
-}
-function changeFPS(_fps) {
-	fps = _fps
-	framesElement.innerHTML = fps.toFixed(0);
-}
+
+// numberic input handlers
+
 function changeBallAdditionInterval(interval) {
 	if (ticks.has(autoBallAddition)) ticks.subscribe(autoBallAddition, interval);
 }
@@ -334,11 +473,14 @@ function changeBallExplosionInterval(interval) {
 	if (ticks.has(explodeBalls)) ticks.subscribe(explodeBalls, interval);
 }
 
+// regular logic events
+
 function updateBalls() {
 	for (const ball of ballStorage.values()) {
 		ball.update();
 	}
 }
+
 function autoBallAddition() {
 	let ballAmount = ballsAddedPerTick;
 	while (ballAmount-- > 0) {
@@ -346,37 +488,29 @@ function autoBallAddition() {
 		addBall({ x: random % canvas.width, y: random % canvas.height });
 	}
 }
+
 function explodeBalls() {
 	if (ballStorage.size > 0) {
 		for (const ball of ballStorage.removeFirst(ballsExplodedPerTick)) {
-			explosionStorage.add({ stage: 12, x: ball.x, y: ball.y});
+			explosionStorage.add({ stage: 12, x: ball.x, y: ball.y });
+			audioPlayer.play(audioPlayer.identifiers.explosion, .45);
 		}
 	}
 	if (explosionStorage.size > 0) animFrames.subscribe(drawExplosions, 1, 1);
 }
-function addBall(position) {
-	ballStorage.add(new Ball(position.x, position.y));
-}
 
-// Interval functions
+// animation frame functions
 
 function showFPS() {
 	const uiElement = document.getElementById("fps-counter");
-	uiElement.innerHTML = `FPS (target): ${calculatedFPS.toFixed(2)} (${(fps).toFixed(1)})`
+	uiElement.innerHTML = `TPS (target): ${calculatedTPS.toFixed(2)} (${(tps).toFixed(1)})\t` + `FPS (target): ${calculatedFPS.toFixed(2)} (${(fps).toFixed(1)})`;
 
-	if (calculatedFPS < Math.round(fps) - 12) {
-		uiElement.style.color = "red";
-	} else if (calculatedFPS > Math.round(fps) + 4) {
-		uiElement.style.color = "green";
-	} else {
-		uiElement.style.color = "blue";
-	}
 }
 
 function drawBalls() {
 	const positions = [];
 	for (const ball of ballStorage.values()) {
-		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
+		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) === -1) {
 			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
 			positions.push({ x: ball.x, y: ball.y });
 		}
@@ -423,12 +557,9 @@ function drawTrail(start, end, initialSize, startColor, endColor) {
 
 function drawExplosions() {
 	for (const [i, e] of explosionStorage.entries()) {
-		e.stage--;
-		if (e.stage == 11 && !soundMuted){
-			explosionSoundClip.play();
-			explosionSoundClip.update();
-		}
-		if (e.stage == 0) {
+		if (!freeze.checked) e.stage--;
+
+		if (e.stage === 0) {
 			explosionStorage.delete(i);
 		} {
 			const frameStart = (11 - e.stage) * explosionSprites.width / 12;
@@ -436,6 +567,11 @@ function drawExplosions() {
 		}
 	}
 	if (explosionStorage.size === 0) animFrames.unsubscribe(drawExplosions);
+}
+
+function drawFrozenMask() {
+	ctx.fillStyle = "rgba(54, 154, 255, .2)";
+	ctx.fillRect(0, 0, canvas.width, canvas.height);
 }
 
 // Util
@@ -448,16 +584,19 @@ function getRelativeCursorPosition(canvas, event) {
 	return { x, y };
 }
 
-function freezeGame() {
-	animFrames.unsubscribe(drawExplosions);
-	changeTPS(0);
+function changeTPS(_tps) {
+	tps = _tps
+	clearInterval(tickInterval);
+	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
+	updatesElement.innerHTML = tps.toFixed(0);
+}
+function changeFPS(_fps) {
+	fps = _fps
+	framesElement.innerHTML = fps.toFixed(0);
 }
 
-function unfreezeGame() {
-	tps = tpsSliderValues[tpsSlider.value];
-	changeTPS(tps);
-	if (explosionStorage.size > 0)
-		animFrames.subscribe(drawExplosions, 1, 2);
+function addBall(position) {
+	ballStorage.add(new Ball(position.x, position.y));
 }
 
 function compareFunction(a, b) {
@@ -465,17 +604,28 @@ function compareFunction(a, b) {
 }
 
 // Автоматически подгоняет область отрисовки под размер окна
-function resizeCanvas(){
+function resizeCanvas() {
 	canvas.width = window.innerWidth - 20;
 	canvas.height = window.innerHeight - 50;
+
+	for (const ball of ballStorage.values()) {
+		if (ball.x > canvas.width - ball.diameter)
+			ball.x = ball.diameter;
+		if (ball.y > canvas.height - ball.diameter)
+			ball.y = ball.diameter;
+	}
 }
 
+let tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
+window.requestAnimationFrame((timestamp) => animFrames.animFrame(timestamp));
+
+// Adding listeners
+
 ticks
-	.subscribe(updateBalls, 1);
+	.subscribe(updateBalls, 1)
+	.subscribe(() => audioPlayer.update(), 5);
+
 animFrames
 	.subscribe(drawTrails, 1, 0)
 	.subscribe(drawBalls, 1, 1)
 	.subscribe(showFPS, 10, 3);
-	
-let tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
-window.requestAnimationFrame((timestamp) => animFrames.animFrame(timestamp));
