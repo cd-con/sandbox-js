@@ -3,7 +3,7 @@
 	<head>
 		<meta charset='utf-8'>
 		<meta http-equiv='X-UA-Compatible' content='IE=edge'>
-		<title>Balls is undefined</title>
+		<title data-locale-tag="dialogs.about.game_name">Balls is undefined</title>
 		<meta name='viewport' content='width=device-width, initial-scale=1'>
 		<link rel="icon" href="favicon.ico" />
 		<link href="style.css" rel="stylesheet"/>
@@ -14,32 +14,34 @@
 		<!-- Набор инструментов -->
 		<div>
 			<div class="in-one-line"; style="width: 27%; padding-left: 10px;">
-				<button id="play-again">Reset</button>
-				<button id="show-settings">Settings</button>
-				<button id="show-about">About</button>
-				<p id="ball-counter">Balls count: 0</p>
-				<p id="fps-counter">FPS(target): 0 (0)</p>
+				<button id="play-again" data-locale-tag="captions.buttons.reset_button">Reset</button>
+				<button id="show-settings" data-locale-tag="dialogs.settings.title">Settings</button>
+				<button id="show-about" data-locale-tag="dialogs.about.title">About</button>
+				<!-- Локализация обновляется через скрипт main.js -->
+					<p id="ball-counter">Balls count: 0</p>
+					<p id="fps-counter">FPS(target): 0 (0)</p>
+				<!-- Локализация обновляется через скрипт main.js -->
 			</div>
 			
 			<!-- Диалоговое окно настроек-->
 			<dialog id="dialog-settings" class="dialog-style">
 					<div class="in-one-line" id="dialog-header">
-						<p>Settings</p>
+						<p data-locale-tag="dialogs.settings.title">Settings</p>
 						<div>
 							<button id="close-settings">X</button>
 						</div>
 					</div>		
 					<div>
 						<input type="checkbox" id="draw-trail" oninput="toggleDrawTrail(this.checked)" checked>
-						<label for="draw-trail">Draw trail</label>
+						<label for="draw-trail" data-locale-tag="dialogs.settings.draw_trail">Draw trail</label>
 					</div>
 					<div>
 						<input type="checkbox" id="freeze" oninput="if(this.checked) freezeGame(); else unfreezeGame()">
-						<label for="freeze">Freeze game</label>
+						<label for="freeze" data-locale-tag="dialogs.settings.freeze_game">Freeze game</label>
 					</div>
 					<div>
 						<input type="checkbox" id="mute" oninput="soundMuted = this.checked">
-						<label for="mute">Mute sounds</label>
+						<label for="mute" data-locale-tag="dialogs.settings.mute_sound">Mute sounds</label>
 					</div>
 					<div id="sliders">
 						<div id="tps">
@@ -55,14 +57,15 @@
 						</div>
 					</div>
 					<!-- Idk what here happens, dude -->
+					<!-- Переводить через main.js -->
 					<div id="options">
 						<div id="ball-addition" class="options">
 							<input type="checkbox" id="auto-ball-addition" class="hide-checkbox" oninput="toggleAutoBallAddition(this.checked)">
-							<label for="auto-ball-addition">Add <input class="numberic-input ball-amount" type="number" min="1"
-									max="600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
+							<label for="auto-ball-addition" data-locale-tag="dialogs.settings.automation.add">Add <input class="numberic-input ball-amount" type="number" min="1"
+									max="600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = this.value == 1 ? getLocale('dialogs.settings.automation.ball'): getLocale('dialogs.settings.automation.balls'); 
 							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
 							ballsAddedPerTick = parseInt(this.value);">
-								<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
+								<p class="balls" data-locale-tag="dialogs.settings.automation.ball">ball</p> <p data-locale-tag="dialogs.settings.automation.every">every</p> <input class="numberic-input tick-interval" type="number" min="1"
 									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
 							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
 							changeBallAdditionInterval(parseInt(this.value));">
@@ -72,11 +75,11 @@
 			
 						<div id="ball-explosion" class="options">
 							<input type="checkbox" id="explode-balls" class="hide-checkbox" oninput="toggleBallExplosion(this.checked)">
-							<label for="explode-balls">Explode <input class="numberic-input ball-amount" type="number" min="1"
-									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = `ball${this.value == 1 ? '': 's'}`; 
+							<label for="explode-balls" data-locale-tag="dialogs.settings.automation.explode">Explode <input class="numberic-input ball-amount" type="number" min="1"
+									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('balls')[0].innerHTML = this.value == 1 ? getLocale('dialogs.settings.automation.ball'): getLocale('dialogs.settings.automation.balls'); 
 							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value)));
 							ballsExplodedPerTick = parseInt(this.value);">
-								<p class="balls">ball</p> every <input class="numberic-input tick-interval" type="number" min="1"
+								<p class="balls" data-locale-tag="dialogs.settings.automation.ball">ball</p> <p data-locale-tag="dialogs.settings.automation.every">every</p> <input class="numberic-input tick-interval" type="number" min="1"
 									max="3600" value="1" onchange="this.parentElement.getElementsByClassName('ticks')[0].innerHTML = `tick${this.value == 1 ? '': 's'}`; 
 							this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
 							changeBallExplosionInterval(parseInt(this.value));">
@@ -84,9 +87,10 @@
 							</label>
 						</div>
 						<div id="max-sounds-count" class="options">
-								Sound limit of <input id="sound-limit" class="numberic-input sounds-count" type="number" min="4"
+							<label for="sound-limit" data-locale-tag="dialogs.settings.sound_limit">Limit of <input id="sound-limit" class="numberic-input sounds-count" type="number" min="4"
 									max="32" value="32" onchange="this.value = Math.min(this.max, Math.max(this.min, Math.floor(this.value))); 
-							soundLimiter = parseInt(this.value);">sounds
+							soundLimiter = parseInt(this.value);">
+							<p data-locale-tag="dialogs.settings.sounds">sounds</p></label>
 						</div>
 					</div>
 			</dialog>
@@ -104,14 +108,19 @@
 				"Balls is undefined" by	<a href="https://github.com/cd-con">cd-con</a> and <a href="https://github.com/Terrarianec"> Terrarianec </a>
 			</div>
 			<div>
-				<p>Last modification: 24.12.2022</p>
+				<p>Last modification: 25.12.2022</p>
 			</div>
 		</dialog>
 	</div>
-		<!-- Скрипт -->
-		<script src='settings_dialog.js'></script>
-		<script src='about_dialog.js'></script>
-		<script src='main.js'></script>
-
+		<!-- Скрипты -->		
+			<!-- Скрипты движка -->
+				<script src='classes.js'></script>
+				<script src='main.js'></script>
+			<!-- Скрипты движка -->
+			<!-- Вспомогательные скрипты -->
+				<script src='dialogs.js'></script>
+				<script src='localization.js'></script>
+			<!-- Вспомогательные скрипты -->
+		<!-- Скрипты -->
 	</body>
 </html>

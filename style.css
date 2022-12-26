@@ -51,6 +51,7 @@ input[type="number"] {
 	margin-right: 0.5em;
 }
 .options label{
+	white-space: nowrap;
 	max-width: min-content;
 }
 

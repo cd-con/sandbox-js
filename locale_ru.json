@@ -1,0 +1,41 @@
+{
+	"localeInfo": {
+		"language": "ru",
+		"authors": ["cd-con"]
+	},
+	"localeKeys": {
+		"dialogs": {
+			"settings": {
+				"title": "Настройки",
+				"draw_trail": "Отрисовка хвоста",
+				"freeze_game": "Заморозить игру",
+				"mute_sound": "Отключить звук",
+				"automation": {
+					"add": "Добавить",
+					"ball": "мяч",
+					"balls": "мячей",
+					"every": "каждый",
+					"tick": "такт",
+					"frame": "кадр"
+				},
+				"sound_limit": "Максимум",
+				"sounds": "звуков"
+			},
+			"about": {
+				"title": "О песочнице",
+				"game_name": "Песочница",
+				"by": "от",
+				"and": "и"
+			}
+		},
+		"captions": {
+			"buttons": {
+				"reset_button": "Очистить"
+			},
+			"labels": {
+				"balls_count": "Кол-во шаров: ",
+				"fps_counter": "FPS (целевой): "
+			}
+		}
+	}
+}

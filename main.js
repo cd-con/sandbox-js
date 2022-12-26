@@ -47,10 +47,16 @@ fpsSlider.max = fpsSliderValues.length - 1;
 let tps = tpsSliderValues.at(-1); // Обновления физики в секунду
 let fps = fpsSliderValues.at(-1); // Обновление области отрисовки в секунду
 
+//
+// Звук
+//
+
 let soundMuted = false;
 let globalSoundsCounter = 0;
 let soundLimiter = 32;
 
+const ballBounceSound = new SoundEntity("content/sounds/bounce.mp3");
+const ballExplosionSound = new SoundEntity("content/sounds/explosion.mp3");
 //
 // Спрайты
 //
@@ -66,215 +72,18 @@ let ballsExplodedPerTick = ballExplosionElement.getElementsByClassName("ball-amo
 let calculatedFPS = 0;
 let calculatedTPS = 0;
 
-// Классы
-class Ball {
-	constructor(x, y, diameter = 16) {
-		const random = performance.now();
-
-		this.x = x;
-		this.y = y;
-		this.diameter = diameter;
-		const angle = random % Math.PI * 2;
-		const acceleration = random % 16 + 16;
-		this.dx = Math.cos(angle) * acceleration;
-		this.dy = Math.sin(angle) * acceleration;
-		
-		this.bounceSoundPlayer = new SoundQueue("content/sounds/bounce.mp3");
-	}
-	update() {
-		const isCollided = this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width || this.y + this.dy - this.diameter / 2 <= 0 || this.y + this.dy + this.diameter / 2 >= canvas.height;
-		
-		// Bounce off the edges
-		if (this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width) {
-			this.dx = -this.dx * 0.35;
-		}
-
-		if (this.y + this.dy - this.diameter / 2 <= 0) {
-			this.dy = -this.dy * 0.45;
-		}
-		if(this.y + this.dy + this.diameter / 2 >= canvas.height){
-			this.dy = -this.dy * 0.45;
-		}			
-		else{
-			this.dy += gravity;
-		}
-		if (isCollided) {
-			this.dx *= friction;
-			this.dy *= friction;
-		}
-
-		if (!soundMuted && Math.abs(this.dy) > 1 && isCollided){
-			this.isCollidedEarlierWithGround = true;
-			this.bounceSoundPlayer.play();
-			this.bounceSoundPlayer.update();
-		}
-		
-		this.x += this.dx;
-		this.y += this.dy;
-	};
-};
-
-class ObjectStorage {
-	#objects = new Map();
-	#i = 0;
-	constructor() {
-
-	}
-	add(explosion) {
-		this.#objects.set(this.#i++, explosion);
-	}
-	delete(i) {
-		return this.#objects.delete(i);
-	}
-	clear() {
-		this.#objects.clear();
-	}
-	entries() {
-		return this.#objects.entries();
-	}
-	keys() {
-		return this.#objects.keys();
-	}
-	values() {
-		return this.#objects.values();
-	}
-	removeFirst = function* (amount) {
-		while (amount-- > 0 && this.size > 0) {
-			const key = this.#objects.keys().next().value;
-			const object = this.#objects.get(key);
-
-			this.#objects.delete(key);
-			yield object;
-		}
-		return
-	};
-	get size() {
-		return this.#objects.size;
-	}
-}
-
-class Ticks {
-	#i = 0;
-	#listeners = new Map();
-	#lastTick = performance.now();
-
-	tick(timestamp) {
-		const elapsed = timestamp - this.#lastTick;
-
-		calculatedTPS = 1000 / elapsed;
-
-		if (elapsed > 1000 / tps) {
-			this.#update();
-			this.#i++;
-			this.#lastTick = timestamp;
-		}
-	}
-	#update() {
-		const ballsAmount = ballStorage.size;
-
-		for (const [_function, interval] of this.#listeners.entries()) {
-			if (this.#i % interval === 0) _function();
-		}
-
-		if (ballStorage.size !== ballsAmount)
-			ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;	
-	}
-	subscribe(_function, interval) {
-		this.#listeners.set(_function, interval);
-		return this;
-	}
-	unsubscribe(_function) {
-		this.#listeners.delete(_function);
-		return this;
-	}
-	has(_function) {
-		return this.#listeners.has(_function);
-	}
-};
-
-class AnimFrames {
-	#i = 0;
-	#listeners = new Map();
-	#lastTick = performance.now();
-
-	animFrame(timestamp) {
-		const elapsed = timestamp - this.#lastTick;
-
-		calculatedFPS = 1000 / elapsed;
-
-		if (elapsed > 1000 / fps) {
-			this.#draw();
-			this.#i++;
-			this.#lastTick = timestamp;
-		}
-
-		window.requestAnimationFrame((timestamp) => this.animFrame(timestamp));
-	}
-	#draw() {
-		ctx.clearRect(0, 0, canvas.width, canvas.height);
-		for (const [_function, { interval }] of this.#listeners.entries()) {
-			if (this.#i % interval === 0) _function();
-		}
-	}
-	subscribe(_function, interval, priority = Number.MAX_SAFE_INTEGER) {
-		const newlistenersOrder = Array.from(this.#listeners.entries());
-		newlistenersOrder.push([_function, { interval, priority }]);
-		newlistenersOrder.sort(([, a], [, b]) => a.priority - b.priority);
-		this.#listeners = new Map(newlistenersOrder);
-		return this;
-	}
-	unsubscribe(_function) {
-		this.#listeners.delete(_function);
-		return this;
-	}
-	has(_function) {
-		return this.#listeners.has(_function);
-	}
-	getPriority(_function) {
-		return this.#listeners.get(_function).priority;
-	}
-};
-
-// Дима опять меня убьёт за говнокод
-class SoundQueue
-{
-	constructor(clipSrc){
-		this.clipSrc = clipSrc;
-		this.clipQueue = [];
-	}
-
-	update(){
-		for (const audioClip of this.clipQueue) {			
-			if (audioClip.paused){
-				audioClip.play();		
-			}
-		}
-	}
-
-	play(){
-		if (globalSoundsCounter<soundLimiter){
-			const ac = new Audio(this.clipSrc);
-			this.clipQueue.push(ac);
-			ac.addEventListener('ended', () => {
-				this.clipQueue.splice(this.clipQueue.indexOf(ac), 1);
-				globalSoundsCounter--;
-			});
-			globalSoundsCounter++;
-		}
-	}
-}
+// Классы теперь вынесены в classes.js
 
 const ticks = new Ticks();
 const animFrames = new AnimFrames();
 
 let ballStorage = new ObjectStorage();
-const explosionSoundClip = new SoundQueue("content/sounds/explosion.mp3");
 let explosionStorage = new ObjectStorage();
 
 // Event listeners
 
 canvas.addEventListener('mousedown', (mouseEvent) => {
-	addBall(getRelativeCursorPosition(canvas, mouseEvent));
+	addBall(getRelativeCursorPosition(mouseEvent));
 	ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 }, false);
 
@@ -425,8 +234,7 @@ function drawExplosions() {
 	for (const [i, e] of explosionStorage.entries()) {
 		e.stage--;
 		if (e.stage == 11 && !soundMuted){
-			explosionSoundClip.play();
-			explosionSoundClip.update();
+			ballExplosionSound.play();
 		}
 		if (e.stage == 0) {
 			explosionStorage.delete(i);
@@ -438,14 +246,18 @@ function drawExplosions() {
 	if (explosionStorage.size === 0) animFrames.unsubscribe(drawExplosions);
 }
 
-// Util
-
-function getRelativeCursorPosition(canvas, event) {
-	const rect = canvas.getBoundingClientRect();
-	const x = event.clientX - rect.left;
-	const y = event.clientY - rect.top;
-
+// Вспомогательные функции
+function getRelativeCursorPosition(event) {
+	const clientBounding = canvas.getBoundingClientRect();
+	const x = scaleValue(event.clientX - clientBounding.x, [0, canvas.width], [8, canvas.width - 8]);
+	const y = scaleValue(event.clientY - clientBounding.y, [0, canvas.height], [8, canvas.height - 8]);
 	return { x, y };
+}
+
+function scaleValue(value, from, to) {
+	var scale = (to[1] - to[0]) / (from[1] - from[0]);
+	var capped = Math.min(from[1], Math.max(from[0], value)) - from[0];
+	return ~~(capped * scale + to[0]);
 }
 
 function freezeGame() {
@@ -465,9 +277,35 @@ function compareFunction(a, b) {
 }
 
 // Автоматически подгоняет область отрисовки под размер окна
-function resizeCanvas(){
+// Также автоматически перетягивает мячи на пройденное расстояние
+let resizeEndTimeout;
+let canvasInitSize;
+function resizeCanvas(){ 
+	if (resizeEndTimeout == null){ 
+		console.log('Resize event start');
+		canvasInitSize = {x: canvas.width, y: canvas.height};
+		document.getElementById("freeze").checked = true; 
+		freezeGame(); // Замораживаем игру на время перетягивания
+	}
+	
+	clearTimeout(resizeEndTimeout);
+  	resizeEndTimeout = setTimeout(resizeEnd, 250);
+
 	canvas.width = window.innerWidth - 20;
 	canvas.height = window.innerHeight - 50;
+}
+
+function resizeEnd(){
+	
+	console.log('Resize event end');
+	resizeEndTimeout = null;
+	for (const ball of ballStorage.values()) {
+		ball.x = scaleValue(ball.x, [8, canvasInitSize.x - 8], [8,canvas.width - 8])
+		ball.y = scaleValue(ball.y, [8, canvasInitSize.y - 8], [8,canvas.height - 8])
+	}
+
+	document.getElementById("freeze").checked = false;
+	unfreezeGame();	
 }
 
 ticks
