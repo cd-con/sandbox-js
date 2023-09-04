@@ -1,0 +1,88 @@
+* {
+	margin: 0;
+	padding: 0;
+	border: 0;
+	text-decoration: none;
+}
+
+body {
+    font-family: -apple-system,system-ui,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 1.5;
+    color: #292b2c;
+    background-color: #fff;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+} 
+
+#canvas {
+	border: solid 10px black;
+	background: grey;
+}
+
+.hide-checkbox{
+	display: none;
+}
+
+.hide-checkbox+label {
+	color: red;
+}
+
+.hide-checkbox:checked+label {
+	color: green;
+}
+
+input[type="number"] {
+	max-width:fit-content;
+	text-align: center;
+}
+
+.options label,
+#sliders div {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-start;
+}
+
+.options label *,
+#sliders div * {
+	margin-right: 0.5em;
+}
+.options label{
+	white-space: nowrap;
+	max-width: min-content;
+}
+
+#sliders {
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-start;
+}
+
+/* Стили для диалогового окна*/
+.dialog-style{
+	border-radius: 1em;
+	padding: 1em;
+	position: absolute;
+	top: 50%;
+	left: 50%;
+	margin-right: -50%;
+	transform: translate(-50%, -50%)
+}
+
+#dialog-header{
+	font-weight: bold;
+	border-bottom: 1px solid #aaa;
+}
+
+.in-one-line{
+	display: flex;
+	justify-content: space-between;
+}
+
+.in-one-line p {
+	 display: inline;
+	 white-space: nowrap;
+	}

@@ -1,94 +1,81 @@
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth - 20;
+canvas.height = window.innerHeight - 50;
+
 const playAgainButton = document.getElementById('play-again');
 const ballCounter = document.getElementById("ball-counter");
-const canvas = document.getElementById("mainCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth - 32;
-canvas.height = window.innerHeight - 128;
 
-const cumballEntity = new Image();
-cumballEntity.src = 'content/cumball.png';
+const ballAdditionElement = document.getElementById("ball-addition");
+const ballExplosionElement = document.getElementById("ball-explosion");
+
+const tpsSlider = document.getElementById("tps-slider");
+const fpsSlider = document.getElementById("fps-slider");
+
+const updatesElement = document.getElementById("updates");
+const framesElement = document.getElementById("frames");
+
+const friction = .99; // Трение
+const gravity = .981; // Гравитация
+
+const fpsSliderValues = [
+	1,
+	15,
+	20,
+	30,
+	45,
+	60
+].sort(compareFunction);
+const tpsSliderValues = [
+	1,
+	2,
+	5,
+	15,
+	20,
+	30,
+	60
+].sort(compareFunction);
+
+// Задаём значения по умолчанию и placeholder'ы для ввода цифр
+for (const element of document.getElementsByClassName("numberic-input")) {
+	element.placeholder = `${element.min}-${element.max}`;
+}
+
+tpsSlider.max = tpsSliderValues.length - 1;
+fpsSlider.max = fpsSliderValues.length - 1;
+
+let tps = tpsSliderValues.at(-1); // Обновления физики в секунду
+let fps = fpsSliderValues.at(-1); // Обновление области отрисовки в секунду
+
+//
+// Звук
+//
+
+let soundMuted = false;
+let globalSoundsCounter = 0;
+let soundLimiter = 32;
+
+const ballBounceSound = new SoundEntity("content/sounds/bounce.mp3");
+const ballExplosionSound = new SoundEntity("content/sounds/explosion.mp3");
+//
+// Спрайты
+//
+const ballSprite = new Image();
+ballSprite.src = 'content/sprites/ball.png';
 
 const explosionSprites = new Image();
-explosionSprites.src = 'content/explosion.png';
+explosionSprites.src = 'content/sprites/explosion.png';
 
-const friction = 0.9;
-const gravity = 9.81;
+let ballsAddedPerTick = ballAdditionElement.getElementsByClassName("ball-amount")[0].value;
+let ballsExplodedPerTick = ballExplosionElement.getElementsByClassName("ball-amount")[0].value;
 
-let intervalBetweenFrames = 16; // In milliseconds
-let intervalBetweenBallDeploy = 25;
+let calculatedFPS = 0;
+let calculatedTPS = 0;
 
-let deployEnabled = false; // deploy controller
-let trailEnabled = true;
-let detonateBalls = false;
+// Классы теперь вынесены в classes.js
 
-let start;
-let FPS = 0;
-// BALL
-class Ball {
-	constructor(x, y, diameter = 16) {
-		const random = performance.now();
-
-		this.x = x;
-		this.y = y;
-		this.diameter = diameter;
-		const angle = random % Math.PI * 2;
-		const acceleration = random % 16 + 16;
-		this.dx = Math.cos(angle) * acceleration;
-		this.dy = Math.sin(angle) * acceleration;
-	}
-	update() {
-		// Bounce off the edges
-		if (this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width)
-			this.dx = -this.dx * friction * 0.35;
-
-		if (this.y + this.dy - this.diameter / 2 <= 0 || this.y + this.dy + this.diameter / 2 >= canvas.height)
-			this.dy = -this.dy * friction * 0.45;
-		else {
-			// Our only acceleration is gravity | Действительно, наше ускорение - только гравитация
-			this.dy += Math.floor(gravity * friction) / 10;
-		}
-
-		this.x = Math.min(Math.max(this.x + this.dx, this.diameter / 2), canvas.width - this.diameter / 2); //Побег не удастся
-		this.y = Math.min(Math.max(this.y + this.dy, this.diameter / 2), canvas.height - this.diameter / 2); //Вообще не удастся
-
-	};
-};
-
-class ObjectStorage {
-	#objects = new Map();
-	#i = 0;
-	constructor() {
-
-	}
-	add(explosion) {
-		this.#objects.set(this.#i++, explosion);
-	}
-	delete(i) {
-		return this.#objects.delete(i);
-	}
-	clear() {
-		this.#objects.clear();
-	}
-	entries() {
-		return this.#objects.entries();
-	}
-	keys (){
-		return this.#objects.keys();
-	}
-	values(){
-		return this.#objects.values();
-	}
-	removeFirst() {
-		const key = this.#objects.keys().next().value;
-		const object = this.#objects.get(key);
-
-		this.#objects.delete(key);
-		return object;
-	};
-	get size() {
-		return this.#objects.size;
-	}
-}
+const ticks = new Ticks();
+const animFrames = new AnimFrames();
 
 let ballStorage = new ObjectStorage();
 let explosionStorage = new ObjectStorage();
@@ -96,101 +83,130 @@ let explosionStorage = new ObjectStorage();
 // Event listeners
 
 canvas.addEventListener('mousedown', (mouseEvent) => {
-	addXtraCumBall(getRelativeCursorPosition(canvas, mouseEvent));
+	addBall(getRelativeCursorPosition(mouseEvent));
+	ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 }, false);
 
 playAgainButton.addEventListener('click', () => {
 	ballStorage = new ObjectStorage();
 	explosionStorage = new ObjectStorage();
+	ballCounter.innerHTML = `Balls count: ${ballStorage.size}`;
 }, false);
 
-document.getElementById('auto-deploy').addEventListener('click', () => {
-	deployEnabled = !deployEnabled;
-	document.getElementById('auto-deploy').innerHTML = `Deploy balls automatically ${deployEnabled ? "✔" : "❌"}`;
-}, false);
+addEventListener("resize", () => {resizeCanvas()});
 
-document.getElementById('detonate-balls').addEventListener('click', () => {
-	detonateBalls = true;
-}, false);
-
-document.getElementById('draw-trail').addEventListener('click', () => {
-	trailEnabled = !trailEnabled;
-	document.getElementById('draw-trail').innerHTML = `Draw trails ${trailEnabled ? "✔" : "❌"}`;
-}, false);
-
-function onPhysicsRefreshRateChange(interval) {
-	intervalBetweenFrames = interval;
+function toggleBallExplosion(isEnabled) {
+	if (isEnabled)
+		ticks.subscribe(explodeBalls, parseInt(ballExplosionElement.getElementsByClassName("tick-interval")[0].value));
+	else
+		ticks.unsubscribe(explodeBalls);
 }
-function onAutodeployRateChange(interval) {
-	intervalBetweenBallDeploy = interval;
-	clearInterval(autoDeployInterval);
-	autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
+
+function toggleDrawTrail(isEnabled) {
+	if (isEnabled)
+		animFrames.subscribe(drawTrails, 1, 0);
+	else
+		animFrames.unsubscribe(drawTrails);
 }
-function mainFrame(timestamp) {
-	if (!start) {
-		start = timestamp;
+
+function toggleAutoBallAddition(isEnabled) {
+	if (isEnabled)
+		ticks.subscribe(autoBallAddition, parseInt(ballAdditionElement.getElementsByClassName("tick-interval")[0].value));
+	else
+		ticks.unsubscribe(autoBallAddition);
+}
+function onTPSSliderChange(index) {
+	if(tps == 0){
+		document.getElementById("freeze").checked = false;
+		unfreezeGame();
+	}else{
+		changeTPS(tpsSliderValues[index]);
 	}
+}
+function onFPSSliderChange(index) {
+	changeFPS(fpsSliderValues[index]);
+}
+function changeTPS(_tps) {
+	tps = _tps
+	clearInterval(tickInterval);
+	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
+	updatesElement.innerHTML = tps.toFixed(0);
+}
+function changeFPS(_fps) {
+	fps = _fps
+	framesElement.innerHTML = fps.toFixed(0);
+}
+function changeBallAdditionInterval(interval) {
+	if (ticks.has(autoBallAddition)) ticks.subscribe(autoBallAddition, interval);
+}
+function changeBallExplosionInterval(interval) {
+	if (ticks.has(explodeBalls)) ticks.subscribe(explodeBalls, interval);
+}
 
-	const elapsed = timestamp - start;
-
-	FPS = 1000 / elapsed;
-
-	if (elapsed > intervalBetweenFrames) {
-		start = timestamp;
-		updateCumballs();
-		drawFrame();
-		showFPS();
-		if (detonateBalls) {
-			if (ballStorage.size > 0) {
-				const cumball = ballStorage.removeFirst();
-				explosionStorage.add({ framerate: 24, stage: 12, x: cumball.x, y: cumball.y, lastFrameTime: 0 });
-				ballCounter.innerHTML = "Balls count: " + ballStorage.size;
-			}
-			else detonateBalls = false;
+function updateBalls() {
+	for (const ball of ballStorage.values()) {
+		ball.update();
+	}
+}
+function autoBallAddition() {
+	let ballAmount = ballsAddedPerTick;
+	while (ballAmount-- > 0) {
+		const random = performance.now();
+		addBall({ x: random % canvas.width, y: random % canvas.height });
+	}
+}
+function explodeBalls() {
+	if (ballStorage.size > 0) {
+		for (const ball of ballStorage.removeFirst(ballsExplodedPerTick)) {
+			explosionStorage.add({ stage: 12, x: ball.x, y: ball.y});
 		}
 	}
-
-	window.requestAnimationFrame(mainFrame);
+	if (explosionStorage.size > 0) animFrames.subscribe(drawExplosions, 1, 1);
 }
-
-function addXtraCumBall(position) {
+function addBall(position) {
 	ballStorage.add(new Ball(position.x, position.y));
-	ballCounter.innerHTML = "Balls count: " + ballStorage.size;
 }
 
 // Interval functions
 
-function drawFrame() {
-	ctx.clearRect(0, 0, canvas.width, canvas.height);
-	drawExplosions();
-	for (const cumball of ballStorage.values()) {
-		if (trailEnabled && (cumball.dx ** 2 + cumball.dy ** 2) ** 0.5 > cumball.diameter / 2) {
-			drawTrail(
-				{ x: cumball.x, y: cumball.y },
-				{ x: cumball.x - cumball.dx, y: cumball.y - cumball.dy },
-				cumball.diameter,
-				"rgba(127,127,127,255)", "rgba(0,0,0,0)"
-			);
-		}
-		ctx.drawImage(cumballEntity, cumball.x - cumball.diameter / 2, cumball.y - cumball.diameter / 2, cumball.diameter, cumball.diameter);
-	}
-
-}
-
 function showFPS() {
-	if (this.i === undefined || this.i > 10) this.i = 0; // Отличный план, очень надёжный, честно
-	this.i++;
-	if (this.i < 10) return;
-
 	const uiElement = document.getElementById("fps-counter");
-	uiElement.innerHTML = `FPS(target): ${FPS.toFixed(2)} (${(1000 / intervalBetweenFrames).toFixed(1)})`
+	uiElement.innerHTML = `FPS (target): ${calculatedFPS.toFixed(2)} (${(fps).toFixed(1)})`
 
-	if (FPS < Math.round(1000 / intervalBetweenFrames) - 12) {
+	if (calculatedFPS < Math.round(fps) - 12) {
 		uiElement.style.color = "red";
-	} else if (FPS > Math.round(1000 / intervalBetweenFrames) + 4) {
+	} else if (calculatedFPS > Math.round(fps) + 4) {
 		uiElement.style.color = "green";
 	} else {
 		uiElement.style.color = "blue";
+	}
+}
+
+function drawBalls() {
+	const positions = [];
+	for (const ball of ballStorage.values()) {
+		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
+			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
+			positions.push({ x: ball.x, y: ball.y });
+		}
+	}
+}
+
+function drawTrails() {
+	const positions = [];
+	for (const ball of ballStorage.values()) {
+		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
+			if ((ball.dx ** 2 + ball.dy ** 2) ** 0.5 > ball.diameter / 2) {
+				drawTrail(
+					{ x: ball.x, y: ball.y },
+					{ x: ball.x - ball.dx, y: ball.y - ball.dy },
+					ball.diameter,
+					"rgba(127,127,127,255)", "rgba(0,0,0,0)"
+				);
+			}
+
+			positions.push({ x: ball.x, y: ball.y });
+		}
 	}
 }
 
@@ -212,44 +228,92 @@ function drawTrail(start, end, initialSize, startColor, endColor) {
 	ctx.lineTo(start.x + Math.cos(lowerPointAngle) * radius, start.y + Math.sin(lowerPointAngle) * radius);
 	ctx.closePath();
 	ctx.fill();
-
 }
 
 function drawExplosions() {
 	for (const [i, e] of explosionStorage.entries()) {
-
 		e.stage--;
-
+		if (e.stage == 11 && !soundMuted){
+			ballExplosionSound.play();
+		}
 		if (e.stage == 0) {
 			explosionStorage.delete(i);
+		} {
+			const frameStart = (11 - e.stage) * explosionSprites.width / 12;
+			ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
 		}
-
-		const frameStart = (11 - e.stage) * explosionSprites.width / 12;
-		ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
 	}
-}
-function updateCumballs() {
-	for (const cumball of ballStorage.values()) {
-		cumball.update();
-	}
+	if (explosionStorage.size === 0) animFrames.unsubscribe(drawExplosions);
 }
 
-function autoDeploy() {
-	if (deployEnabled) {
-		const random = performance.now();
-		addXtraCumBall({ x: random % canvas.width, y: random % canvas.height });
-	}
-}
-
-// Util
-
-function getRelativeCursorPosition(canvas, event) {
-	const rect = canvas.getBoundingClientRect();
-	const x = event.clientX - rect.left;
-	const y = event.clientY - rect.top;
-
+// Вспомогательные функции
+function getRelativeCursorPosition(event) {
+	const clientBounding = canvas.getBoundingClientRect();
+	const x = scaleValue(event.clientX - clientBounding.x, [0, canvas.width], [8, canvas.width - 8]);
+	const y = scaleValue(event.clientY - clientBounding.y, [0, canvas.height], [8, canvas.height - 8]);
 	return { x, y };
 }
-let autoDeployInterval = setInterval(autoDeploy, intervalBetweenBallDeploy);
 
-window.requestAnimationFrame(mainFrame);
+function scaleValue(value, from, to) {
+	var scale = (to[1] - to[0]) / (from[1] - from[0]);
+	var capped = Math.min(from[1], Math.max(from[0], value)) - from[0];
+	return ~~(capped * scale + to[0]);
+}
+
+function freezeGame() {
+	animFrames.unsubscribe(drawExplosions);
+	changeTPS(0);
+}
+
+function unfreezeGame() {
+	tps = tpsSliderValues[tpsSlider.value];
+	changeTPS(tps);
+	if (explosionStorage.size > 0)
+		animFrames.subscribe(drawExplosions, 1, 2);
+}
+
+function compareFunction(a, b) {
+	return a - b;
+}
+
+// Автоматически подгоняет область отрисовки под размер окна
+// Также автоматически перетягивает мячи на пройденное расстояние
+let resizeEndTimeout;
+let canvasInitSize;
+function resizeCanvas(){ 
+	if (resizeEndTimeout == null){ 
+		console.log('Resize event start');
+		canvasInitSize = {x: canvas.width, y: canvas.height};
+		document.getElementById("freeze").checked = true; 
+		freezeGame(); // Замораживаем игру на время перетягивания
+	}
+	
+	clearTimeout(resizeEndTimeout);
+  	resizeEndTimeout = setTimeout(resizeEnd, 250);
+
+	canvas.width = window.innerWidth - 20;
+	canvas.height = window.innerHeight - 50;
+}
+
+function resizeEnd(){
+	
+	console.log('Resize event end');
+	resizeEndTimeout = null;
+	for (const ball of ballStorage.values()) {
+		ball.x = scaleValue(ball.x, [8, canvasInitSize.x - 8], [8,canvas.width - 8])
+		ball.y = scaleValue(ball.y, [8, canvasInitSize.y - 8], [8,canvas.height - 8])
+	}
+
+	document.getElementById("freeze").checked = false;
+	unfreezeGame();	
+}
+
+ticks
+	.subscribe(updateBalls, 1);
+animFrames
+	.subscribe(drawTrails, 1, 0)
+	.subscribe(drawBalls, 1, 1)
+	.subscribe(showFPS, 10, 3);
+	
+let tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
+window.requestAnimationFrame((timestamp) => animFrames.animFrame(timestamp));
