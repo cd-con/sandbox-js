@@ -17,6 +17,7 @@ const framesElement = document.getElementById("frames");
 
 const friction = .99; // Трение
 const gravity = .981; // Гравитация
+let lerpAmount = 1.0;
 
 const fpsSliderValues = [
 	1,
@@ -129,6 +130,7 @@ function onFPSSliderChange(index) {
 function changeTPS(_tps) {
 	tps = _tps
 	clearInterval(tickInterval);
+	lerpAmount = scaleValueRaw(tps, [0, 60], [0, 1]);
 	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
 	updatesElement.innerHTML = tps.toFixed(0);
 }
@@ -145,7 +147,7 @@ function changeBallExplosionInterval(interval) {
 
 function updateBalls() {
 	for (const ball of ballStorage.values()) {
-		ball.update();
+		ball.fixedUpdate();
 	}
 }
 function autoBallAddition() {
@@ -185,8 +187,14 @@ function showFPS() {
 function drawBalls() {
 	const positions = [];
 	for (const ball of ballStorage.values()) {
+		ball.update();
 		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
 			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
+			ctx.beginPath();
+			ctx.arc(ball.x, ball.y, ball.diameter / 2, 0, 2 * Math.PI, false);
+			ctx.lineWidth = 1;
+			ctx.strokeStyle = '#ffffff';
+			ctx.stroke();
 			positions.push({ x: ball.x, y: ball.y });
 		}
 	}
@@ -255,9 +263,13 @@ function getRelativeCursorPosition(event) {
 }
 
 function scaleValue(value, from, to) {
+	return ~~(scaleValueRaw(value, from, to));
+}
+
+function scaleValueRaw(value, from, to) {
 	var scale = (to[1] - to[0]) / (from[1] - from[0]);
 	var capped = Math.min(from[1], Math.max(from[0], value)) - from[0];
-	return ~~(capped * scale + to[0]);
+	return capped * scale + to[0];
 }
 
 function freezeGame() {

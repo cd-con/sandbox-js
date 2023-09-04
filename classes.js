@@ -4,41 +4,63 @@ class Ball {
 
 		this.x = x;
 		this.y = y;
+		this.newX = x;
+		this.newY = y;
 		this.diameter = diameter;
 		const angle = random % Math.PI * 2;
 		const acceleration = random % 16 + 16;
 		this.dx = Math.cos(angle) * acceleration;
 		this.dy = Math.sin(angle) * acceleration;
 	}
-	update() {
-		const isCollided = this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width || this.y + this.dy - this.diameter / 2 <= 0 || this.y + this.dy + this.diameter / 2 >= canvas.height;
+
+	lerp(start, end, amt){return (1-amt)*start+amt*end;}
+
+	
+
+	fixedUpdate() {
+
+		const leftCol = this.x + this.dx - this.diameter / 2 <= 0;
+		const rightCol = this.x + this.dx + this.diameter / 2 >= canvas.width;
+		const topCol = this.y + this.dy + this.diameter / 2 >= canvas.height;
+		const bottomCol = this.y + this.dy - this.diameter / 2 <= 0; 
 		
-		// Bounce off the edges
-		if (this.x + this.dx - this.diameter / 2 <= 0 || this.x + this.dx + this.diameter / 2 >= canvas.width) {
+		if (leftCol || rightCol || topCol || bottomCol) {
+			this.dx *= friction;
+			this.dy *= friction;
+		}
+
+
+		if (!soundMuted && Math.abs(this.dy) > 1 && (leftCol || rightCol || topCol || bottomCol)){
+			ballBounceSound.play();
+		}
+		
+		// Горизонталь
+		if (leftCol || rightCol) {
 			this.dx = -this.dx * 0.35;
 		}
 
-		if (this.y + this.dy - this.diameter / 2 <= 0) {
+		// вертикаль
+		if (bottomCol){
 			this.dy = -this.dy * 0.45;
 		}
-		if(this.y + this.dy + this.diameter / 2 >= canvas.height){
+
+		if(topCol){
 			this.dy = -this.dy * 0.45;
 		}			
 		else{
 			this.dy += gravity;
 		}
-		if (isCollided) {
-			this.dx *= friction;
-			this.dy *= friction;
-		}
-
-		if (!soundMuted && Math.abs(this.dy) > 1 && isCollided){
-			ballBounceSound.play();
-		}
-		
-		this.x += this.dx;
-		this.y += this.dy;
+		this.newX = this.x + this.dx;
+		this.newY = this.y + this.dy;
 	};
+	update(){
+		console.log(lerpAmount);
+
+
+
+		this.x = this.lerp(this.x, this.newX, lerpAmount);
+		this.y = this.lerp(this.y, this.newY, lerpAmount);
+	}
 };
 
 class ObjectStorage {
