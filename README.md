@@ -2,4 +2,4 @@
 
 Тестируем всякое, пишем плохо :(
 
-Мы теперь [здесь](sandbox.toadcode.ru).
+Мы теперь [здесь](https://sandbox-js.vercel.app).
