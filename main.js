@@ -17,24 +17,28 @@ const framesElement = document.getElementById("frames");
 
 const friction = .99; // Трение
 const gravity = .981; // Гравитация
+
 let lerpAmount = 1.0;
+let debug = false;
 
 const fpsSliderValues = [
 	1,
 	15,
-	20,
+	24,
 	30,
-	45,
-	60
+	60,
+	75,
+	120,
+	144,
+	240
 ].sort(compareFunction);
 const tpsSliderValues = [
 	1,
-	2,
 	5,
-	15,
-	20,
-	30,
-	60
+	16,
+	24,
+	64,
+	128
 ].sort(compareFunction);
 
 // Задаём значения по умолчанию и placeholder'ы для ввода цифр
@@ -45,8 +49,8 @@ for (const element of document.getElementsByClassName("numberic-input")) {
 tpsSlider.max = tpsSliderValues.length - 1;
 fpsSlider.max = fpsSliderValues.length - 1;
 
-let tps = tpsSliderValues.at(-1); // Обновления физики в секунду
-let fps = fpsSliderValues.at(-1); // Обновление области отрисовки в секунду
+let tps = tpsSliderValues.at(4); // Обновления физики в секунду
+let fps = fpsSliderValues.at(4); // Обновление области отрисовки в секунду
 
 //
 // Звук
@@ -76,7 +80,7 @@ let calculatedTPS = 0;
 // Классы теперь вынесены в classes.js
 
 const ticks = new Ticks();
-const animFrames = new AnimFrames();
+const animator = new AnimFrames();
 
 let ballStorage = new ObjectStorage();
 let explosionStorage = new ObjectStorage();
@@ -105,9 +109,9 @@ function toggleBallExplosion(isEnabled) {
 
 function toggleDrawTrail(isEnabled) {
 	if (isEnabled)
-		animFrames.subscribe(drawTrails, 1, 0);
+		animator.subscribe(drawTrails, 1, 0);
 	else
-		animFrames.unsubscribe(drawTrails);
+		animator.unsubscribe(drawTrails);
 }
 
 function toggleAutoBallAddition(isEnabled) {
@@ -130,7 +134,7 @@ function onFPSSliderChange(index) {
 function changeTPS(_tps) {
 	tps = _tps
 	clearInterval(tickInterval);
-	lerpAmount = scaleValueRaw(tps, [0, 60], [0, 1]);
+	lerpAmount = scaleValueRaw(tps, [0, 128], [0, 1.05]);
 	tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
 	updatesElement.innerHTML = tps.toFixed(0);
 }
@@ -163,7 +167,7 @@ function explodeBalls() {
 			explosionStorage.add({ stage: 12, x: ball.x, y: ball.y});
 		}
 	}
-	if (explosionStorage.size > 0) animFrames.subscribe(drawExplosions, 1, 1);
+	if (explosionStorage.size > 0) animator.subscribe(drawExplosions, 1, 1);
 }
 function addBall(position) {
 	ballStorage.add(new Ball(position.x, position.y));
@@ -189,12 +193,16 @@ function drawBalls() {
 	for (const ball of ballStorage.values()) {
 		ball.update();
 		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
-			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
-			ctx.beginPath();
-			ctx.arc(ball.x, ball.y, ball.diameter / 2, 0, 2 * Math.PI, false);
-			ctx.lineWidth = 1;
-			ctx.strokeStyle = '#ffffff';
-			ctx.stroke();
+			if (debug){
+				ctx.beginPath();
+				ctx.arc(ball.x, ball.y, ball.diameter / 2, 0, 2 * Math.PI, false);
+				ctx.lineWidth = 1;
+				ctx.strokeStyle = '#ffffff';
+				ctx.stroke();
+			}else{
+				ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
+			}
+
 			positions.push({ x: ball.x, y: ball.y });
 		}
 	}
@@ -251,7 +259,7 @@ function drawExplosions() {
 			ctx.drawImage(explosionSprites, frameStart, 0, 96, 96, e.x - 48, e.y - 48, 96, 96);
 		}
 	}
-	if (explosionStorage.size === 0) animFrames.unsubscribe(drawExplosions);
+	if (explosionStorage.size === 0) animator.unsubscribe(drawExplosions);
 }
 
 // Вспомогательные функции
@@ -273,7 +281,7 @@ function scaleValueRaw(value, from, to) {
 }
 
 function freezeGame() {
-	animFrames.unsubscribe(drawExplosions);
+	animator.unsubscribe(drawExplosions);
 	changeTPS(0);
 }
 
@@ -281,7 +289,7 @@ function unfreezeGame() {
 	tps = tpsSliderValues[tpsSlider.value];
 	changeTPS(tps);
 	if (explosionStorage.size > 0)
-		animFrames.subscribe(drawExplosions, 1, 2);
+		animator.subscribe(drawExplosions, 1, 2);
 }
 
 function compareFunction(a, b) {
@@ -322,10 +330,10 @@ function resizeEnd(){
 
 ticks
 	.subscribe(updateBalls, 1);
-animFrames
+animator
 	.subscribe(drawTrails, 1, 0)
 	.subscribe(drawBalls, 1, 1)
 	.subscribe(showFPS, 10, 3);
 	
 let tickInterval = setInterval(() => ticks.tick(performance.now()), 1000 / tps);
-window.requestAnimationFrame((timestamp) => animFrames.animFrame(timestamp));
+window.requestAnimationFrame((timestamp) => animator.animFrame(timestamp));

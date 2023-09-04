@@ -1,28 +1,28 @@
 class Ball {
 	constructor(x, y, diameter = 16) {
 		const random = performance.now();
-
+		this.name = "ball" + random;
 		this.x = x;
 		this.y = y;
-		this.newX = x;
-		this.newY = y;
 		this.diameter = diameter;
 		const angle = random % Math.PI * 2;
 		const acceleration = random % 16 + 16;
 		this.dx = Math.cos(angle) * acceleration;
 		this.dy = Math.sin(angle) * acceleration;
+		
+		this.listenerInit = false;
+		
+		// Принудительно обновляем физику
+		this.fixedUpdate();
 	}
-
-	lerp(start, end, amt){return (1-amt)*start+amt*end;}
-
 	
 
 	fixedUpdate() {
 
-		const leftCol = this.x + this.dx - this.diameter / 2 <= 0;
+		const leftCol = this.x + this.dx - this.diameter / 2 <= 0.05;
 		const rightCol = this.x + this.dx + this.diameter / 2 >= canvas.width;
 		const topCol = this.y + this.dy + this.diameter / 2 >= canvas.height;
-		const bottomCol = this.y + this.dy - this.diameter / 2 <= 0; 
+		const bottomCol = this.y + this.dy - this.diameter / 2 <= 0.05; 
 		
 		if (leftCol || rightCol || topCol || bottomCol) {
 			this.dx *= friction;
@@ -50,16 +50,24 @@ class Ball {
 		else{
 			this.dy += gravity;
 		}
-		this.newX = this.x + this.dx;
-		this.newY = this.y + this.dy;
 	};
 	update(){
-		console.log(lerpAmount);
-
-
-
-		this.x = this.lerp(this.x, this.newX, lerpAmount);
-		this.y = this.lerp(this.y, this.newY, lerpAmount);
+		this.x += this.dx * lerpAmount;
+		this.y += this.dy * lerpAmount;
+		
+		if (debug){
+			// Сделать в виде небольшого всплывающего окна на Canvas
+			if (!this.listenerInit){
+				document.addEventListener('mousemove', (e) => {
+					const pos = getRelativeCursorPosition(e);
+					// криво определяет
+					if (pos.x > (this.x - this.diameter / 2) && pos.x < (pos.x + this.diameter / 2) && pos.y > (this.y - this.diameter / 2) && pos.y < (this.y + this.diameter / 2)){
+									console.log("Ball " + this.name + " position x: " + this.x + "position y:" + this.y);
+					}
+				}, false);
+				this.listenerInit = true;
+			}
+		}
 	}
 };
 
