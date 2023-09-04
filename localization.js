@@ -12,7 +12,7 @@ function getJSON(yourUrl){
             
 }
 
-const localeData = getJSON("https://static.toadcode.ru/sandbox/locale_"+navigator.language+".json");
+const localeData = getJSON("https://sandbox-js.vercel.app/locale_"+navigator.language+".json");
  
 let localizationElements = document.querySelectorAll('[data-locale-tag]');
 
