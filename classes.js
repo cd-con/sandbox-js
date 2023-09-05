@@ -1,7 +1,6 @@
 class Ball {
 	constructor(x, y, diameter = 16) {
 		const random = performance.now();
-		this.name = "ball" + random;
 		this.x = x;
 		this.y = y;
 		this.diameter = diameter;
@@ -9,65 +8,56 @@ class Ball {
 		const acceleration = random % 16 + 16;
 		this.dx = Math.cos(angle) * acceleration;
 		this.dy = Math.sin(angle) * acceleration;
-		
-		this.listenerInit = false;
-		
+
+		this.hitTop = false;
+		this.hitBottom = false;
+		this.hitLeft = false;
+		this.hitRight = false;
 		// Принудительно обновляем физику
 		this.fixedUpdate();
 	}
 	
+	#updateCollisions(){
+		this.hitLeft = !(this.x > this.diameter);
+		this.hitRight = !(this.x < canvas.width - this.diameter);
+		this.hitTop = !(this.y < canvas.height - this.diameter);
+		this.hitBottom = !(this.y > this.diameter); 
+		this.collided = this.hitBottom || this.hitLeft || this.hitRight || this.hitTop;
+	}
 
-	fixedUpdate() {
-
-		const leftCol = this.x + this.dx - this.diameter / 2 <= 0.05;
-		const rightCol = this.x + this.dx + this.diameter / 2 >= canvas.width;
-		const topCol = this.y + this.dy + this.diameter / 2 >= canvas.height;
-		const bottomCol = this.y + this.dy - this.diameter / 2 <= 0.05; 
-		
-		if (leftCol || rightCol || topCol || bottomCol) {
+	fixedUpdate() {	
+		this.#updateCollisions();
+		// Применяем трение в случае столкновения
+		if (this.collided) {
 			this.dx *= friction;
 			this.dy *= friction;
 		}
 
 
-		if (!soundMuted && Math.abs(this.dy) > 1 && (leftCol || rightCol || topCol || bottomCol)){
+		if (!soundMuted && Math.abs(this.dy) > 1 && this.collided){
 			ballBounceSound.play();
 		}
 		
 		// Горизонталь
-		if (leftCol || rightCol) {
-			this.dx = -this.dx * 0.35;
+		if (this.hitLeft || this.hitRight) {
+			this.dx = -this.dx * 0.45;
 		}
 
 		// вертикаль
-		if (bottomCol){
+		if (this.hitBottom){
 			this.dy = -this.dy * 0.45;
-		}
-
-		if(topCol){
-			this.dy = -this.dy * 0.45;
-		}			
-		else{
+		}else{
 			this.dy += gravity;
 		}
+
+		if(this.hitTop){
+			this.dy = -this.dy * 0.45;
+		}			
 	};
+
 	update(){
 		this.x += this.dx * lerpAmount;
 		this.y += this.dy * lerpAmount;
-		
-		if (debug){
-			// Сделать в виде небольшого всплывающего окна на Canvas
-			if (!this.listenerInit){
-				document.addEventListener('mousemove', (e) => {
-					const pos = getRelativeCursorPosition(e);
-					// криво определяет
-					if (pos.x > (this.x - this.diameter / 2) && pos.x < (pos.x + this.diameter / 2) && pos.y > (this.y - this.diameter / 2) && pos.y < (this.y + this.diameter / 2)){
-									console.log("Ball " + this.name + " position x: " + this.x + "position y:" + this.y);
-					}
-				}, false);
-				this.listenerInit = true;
-			}
-		}
 	}
 };
 

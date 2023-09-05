@@ -190,19 +190,11 @@ function showFPS() {
 
 function drawBalls() {
 	const positions = [];
+	ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 	for (const ball of ballStorage.values()) {
 		ball.update();
 		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
-			if (debug){
-				ctx.beginPath();
-				ctx.arc(ball.x, ball.y, ball.diameter / 2, 0, 2 * Math.PI, false);
-				ctx.lineWidth = 1;
-				ctx.strokeStyle = '#ffffff';
-				ctx.stroke();
-			}else{
-				ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
-			}
-
+			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
 			positions.push({ x: ball.x, y: ball.y });
 		}
 	}
