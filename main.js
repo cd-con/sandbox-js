@@ -17,6 +17,8 @@ const framesElement = document.getElementById("frames");
 
 const friction = .99; // Трение
 const gravity = .981; // Гравитация
+// Хранилище всех коллайдеров
+let colliderGlobalStorage = new ObjectStorage();
 
 let lerpAmount = 1.0;
 let debug = false;
@@ -85,6 +87,9 @@ const animator = new AnimFrames();
 let ballStorage = new ObjectStorage();
 let explosionStorage = new ObjectStorage();
 
+/// TEST
+const debugObs = new StaticObstacle(500, 500);
+
 // Event listeners
 
 canvas.addEventListener('mousedown', (mouseEvent) => {
@@ -151,7 +156,7 @@ function changeBallExplosionInterval(interval) {
 
 function updateBalls() {
 	for (const ball of ballStorage.values()) {
-		ball.fixedUpdate();
+		ball.fixedUpdate(1000 / tps);
 	}
 }
 function autoBallAddition() {
@@ -170,7 +175,7 @@ function explodeBalls() {
 	if (explosionStorage.size > 0) animator.subscribe(drawExplosions, 1, 1);
 }
 function addBall(position) {
-	ballStorage.add(new Ball(position.x, position.y));
+	ballStorage.add(new Ball(position.x - 8, position.y - 8));
 }
 
 // Interval functions
@@ -190,13 +195,15 @@ function showFPS() {
 
 function drawBalls() {
 	const positions = [];
+	debugObs.transform.collider.debugDraw(ctx);
 	ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 	for (const ball of ballStorage.values()) {
+		ball.transform.collider.debugDraw(ctx);
 		ball.update();
-		if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
-			ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
-			positions.push({ x: ball.x, y: ball.y });
-		}
+		//if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
+		//	ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
+		//	positions.push({ x: ball.x, y: ball.y });
+		//}
 	}
 }
 
