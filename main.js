@@ -198,6 +198,7 @@ function drawBalls() {
 	debugObs.transform.collider.debugDraw(ctx);
 	ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 	for (const ball of ballStorage.values()) {
+		ball.transform.collider.intersects(colliderGlobalStorage.values());
 		ball.transform.collider.debugDraw(ctx);
 		ball.update();
 		//if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
