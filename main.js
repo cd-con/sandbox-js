@@ -1,95 +1,3 @@
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth - 20;
-canvas.height = window.innerHeight - 50;
-
-const playAgainButton = document.getElementById('play-again');
-const ballCounter = document.getElementById("ball-counter");
-
-const ballAdditionElement = document.getElementById("ball-addition");
-const ballExplosionElement = document.getElementById("ball-explosion");
-
-const tpsSlider = document.getElementById("tps-slider");
-const fpsSlider = document.getElementById("fps-slider");
-
-const updatesElement = document.getElementById("updates");
-const framesElement = document.getElementById("frames");
-
-const friction = .99; // Трение
-const gravity = .981; // Гравитация
-// Хранилище всех коллайдеров
-let colliderGlobalStorage = new ObjectStorage();
-
-let lerpAmount = 1.0;
-let debug = false;
-
-const fpsSliderValues = [
-	1,
-	15,
-	24,
-	30,
-	60,
-	75,
-	120,
-	144,
-	240
-].sort(compareFunction);
-const tpsSliderValues = [
-	1,
-	5,
-	16,
-	24,
-	64,
-	128
-].sort(compareFunction);
-
-// Задаём значения по умолчанию и placeholder'ы для ввода цифр
-for (const element of document.getElementsByClassName("numberic-input")) {
-	element.placeholder = `${element.min}-${element.max}`;
-}
-
-tpsSlider.max = tpsSliderValues.length - 1;
-fpsSlider.max = fpsSliderValues.length - 1;
-
-let tps = tpsSliderValues.at(4); // Обновления физики в секунду
-let fps = fpsSliderValues.at(4); // Обновление области отрисовки в секунду
-
-//
-// Звук
-//
-
-let soundMuted = false;
-let globalSoundsCounter = 0;
-let soundLimiter = 32;
-
-const ballBounceSound = new SoundEntity("content/sounds/bounce.mp3");
-const ballExplosionSound = new SoundEntity("content/sounds/explosion.mp3");
-//
-// Спрайты
-//
-const ballSprite = new Image();
-ballSprite.src = 'content/sprites/ball.png';
-
-const explosionSprites = new Image();
-explosionSprites.src = 'content/sprites/explosion.png';
-
-let ballsAddedPerTick = ballAdditionElement.getElementsByClassName("ball-amount")[0].value;
-let ballsExplodedPerTick = ballExplosionElement.getElementsByClassName("ball-amount")[0].value;
-
-let calculatedFPS = 0;
-let calculatedTPS = 0;
-
-// Классы теперь вынесены в classes.js
-
-const ticks = new Ticks();
-const animator = new AnimFrames();
-
-let ballStorage = new ObjectStorage();
-let explosionStorage = new ObjectStorage();
-
-/// TEST
-const debugObs = new StaticObstacle(500, 500);
-
 // Event listeners
 
 canvas.addEventListener('mousedown', (mouseEvent) => {
@@ -155,9 +63,9 @@ function changeBallExplosionInterval(interval) {
 }
 
 function updateBalls() {
-	for (const ball of ballStorage.values()) {
-		ball.fixedUpdate(1000 / tps);
-	}
+	/*for (const ball of ballStorage.values()) {
+		ball.fixedUpdate();
+	}*/
 }
 function autoBallAddition() {
 	let ballAmount = ballsAddedPerTick;
@@ -175,7 +83,7 @@ function explodeBalls() {
 	if (explosionStorage.size > 0) animator.subscribe(drawExplosions, 1, 1);
 }
 function addBall(position) {
-	ballStorage.add(new Ball(position.x - 8, position.y - 8));
+	ballStorage.add(new NewBall(new Vector2D(position.x - 8, position.y - 8)));
 }
 
 // Interval functions
@@ -194,17 +102,10 @@ function showFPS() {
 }
 
 function drawBalls() {
-	const positions = [];
-	debugObs.transform.collider.debugDraw(ctx);
-	ctx.strokeRect(16, 16, canvas.width - 32, canvas.height - 32);
 	for (const ball of ballStorage.values()) {
-		ball.transform.collider.intersects(colliderGlobalStorage.values());
-		ball.transform.collider.debugDraw(ctx);
+		const pos = ball.transform.position;
+		ctx.drawImage(ballSprite, pos.x - 4, pos.y - 4, 16, 16);
 		ball.update();
-		//if (positions.findIndex(c => Math.abs(c.x - ball.x) < 1.5 && Math.abs(c.y - ball.y) < 1.5) == -1) {
-		//	ctx.drawImage(ballSprite, ball.x - ball.diameter / 2, ball.y - ball.diameter / 2, ball.diameter, ball.diameter);
-		//	positions.push({ x: ball.x, y: ball.y });
-		//}
 	}
 }
 
@@ -292,9 +193,6 @@ function unfreezeGame() {
 		animator.subscribe(drawExplosions, 1, 2);
 }
 
-function compareFunction(a, b) {
-	return a - b;
-}
 
 // Автоматически подгоняет область отрисовки под размер окна
 // Также автоматически перетягивает мячи на пройденное расстояние
@@ -320,8 +218,8 @@ function resizeEnd(){
 	console.log('Resize event end');
 	resizeEndTimeout = null;
 	for (const ball of ballStorage.values()) {
-		ball.x = scaleValue(ball.x, [8, canvasInitSize.x - 8], [8,canvas.width - 8])
-		ball.y = scaleValue(ball.y, [8, canvasInitSize.y - 8], [8,canvas.height - 8])
+		ball.transform.position.x = scaleValue(ball.x, [8, canvasInitSize.x - 8], [8,canvas.width - 8])
+		ball.transform.position.y = scaleValue(ball.y, [8, canvasInitSize.y - 8], [8,canvas.height - 8])
 	}
 
 	document.getElementById("freeze").checked = false;
